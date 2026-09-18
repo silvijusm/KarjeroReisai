@@ -33,7 +33,7 @@ class LocationTrackingService : Service() {
             val location = result.lastLocation ?: return
             if (sessionId <= 0L) return
 
-            val now = location.time.takeIf { it > 0 } ?: System.currentTimeMillis()
+            val now = location.time.takeIf { it > 0L } ?: System.currentTimeMillis()
 
             db.addGpsPoint(
                 sessionId = sessionId,
@@ -56,9 +56,11 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        sessionId = intent?.getLongExtra(EXTRA_SESSION_ID, -1L)
-            ?: db.getActiveSession()?.id
-            ?: -1L
+        sessionId = if (intent?.hasExtra(EXTRA_SESSION_ID) == true) {
+            intent.getLongExtra(EXTRA_SESSION_ID, -1L)
+        } else {
+            db.getActiveSession()?.id ?: -1L
+        }
 
         if (sessionId <= 0L) {
             stopSelf()
@@ -73,7 +75,7 @@ class LocationTrackingService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        if (Build.VERSION.SDK_INT >= 29) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
                 this,
                 NOTIFICATION_ID,
@@ -90,11 +92,13 @@ class LocationTrackingService : Service() {
 
     private fun startLocationUpdates() {
         val fineGranted = ActivityCompat.checkSelfPermission(
-            this, Manifest.permission.ACCESS_FINE_LOCATION
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
         val coarseGranted = ActivityCompat.checkSelfPermission(
-            this, Manifest.permission.ACCESS_COARSE_LOCATION
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!fineGranted && !coarseGranted) {
@@ -141,12 +145,16 @@ class LocationTrackingService : Service() {
 
         val radius = session.zoneRadiusM.toFloat()
         val distanceA = distanceMeters(
-            location.latitude, location.longitude,
-            session.loadingLat!!, session.loadingLon!!
+            location.latitude,
+            location.longitude,
+            session.loadingLat!!,
+            session.loadingLon!!
         )
         val distanceB = distanceMeters(
-            location.latitude, location.longitude,
-            session.unloadingLat!!, session.unloadingLon!!
+            location.latitude,
+            location.longitude,
+            session.unloadingLat!!,
+            session.unloadingLon!!
         )
 
         val insideA = distanceA <= radius
@@ -165,7 +173,7 @@ class LocationTrackingService : Service() {
                     val start = loadTripStartTime().takeIf { it > 0L } ?: session.startTime
                     val distanceKm = db.routeDistanceKm(sessionId, start, now)
 
-                    val inserted = db.addTrip(
+                    db.addTrip(
                         sessionId = sessionId,
                         latitude = location.latitude,
                         longitude = location.longitude,
@@ -173,9 +181,88 @@ class LocationTrackingService : Service() {
                         source = "AUTO",
                         startTimestamp = start,
                         distanceKm = distanceKm,
-                        durationMs = now - start,
+                        durationMs = (now - start).coerceAtLeast(0L),
                         preventDuplicateWithinMs = 60_000L
                     )
 
-                    // Net jei DB dėl dubliavimo atmetė įrašą, būnant B nepaliekame ARMED būsenos.
-                    // Tai neleidžia po 60 s netyčia suskaičiuoti dar vieno reiso tame pač
+                    // Persijungiame į laukimo būseną net jei DB atmetė dublį.
+                    // Taip tame pačiame B taške po minutės nebus įrašytas antras reisas.
+                    saveAutoState(AutoState.WAITING_FOR_A)
+                    saveTripStartTime(0L)
+                }
+            }
+        }
+    }
+
+    private fun distanceMeters(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double
+    ): Float {
+        val out = FloatArray(1)
+        Location.distanceBetween(lat1, lon1, lat2, lon2, out)
+        return out[0]
+    }
+
+    private fun saveAutoState(state: AutoState) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putString(autoStateKey(sessionId), state.name)
+            .apply()
+    }
+
+    private fun loadAutoState(): AutoState {
+        val value = getSharedPreferences(PREFS, MODE_PRIVATE)
+            .getString(autoStateKey(sessionId), AutoState.WAITING_FOR_A.name)
+
+        return runCatching { AutoState.valueOf(value ?: AutoState.WAITING_FOR_A.name) }
+            .getOrDefault(AutoState.WAITING_FOR_A)
+    }
+
+    private fun saveTripStartTime(time: Long) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putLong(tripStartKey(sessionId), time)
+            .apply()
+    }
+
+    private fun loadTripStartTime(): Long =
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+            .getLong(tripStartKey(sessionId), 0L)
+
+    private fun createNotificationChannel() {
+        val manager = getSystemService(NotificationManager::class.java)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "GPS sekimas",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Karjero reisų GPS ir automatinė reisų apskaita"
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        fused.removeLocationUpdates(callback)
+        if (::db.isInitialized) db.close()
+        super.onDestroy()
+    }
+
+    companion object {
+        const val EXTRA_SESSION_ID = "extra_session_id"
+
+        const val PREFS = "location_tracking"
+        const val KEY_HAS_LATEST = "has_latest"
+        const val KEY_LATEST_LAT_BITS = "latest_lat_bits"
+        const val KEY_LATEST_LON_BITS = "latest_lon_bits"
+        const val KEY_LATEST_TIME = "latest_time"
+
+        private const val CHANNEL_ID = "karjero_reisai_tracking"
+        private const val NOTIFICATION_ID = 1001
+
+        fun autoStateKey(sessionId: Long): String = "auto_state_\$sessionId"
+
+        fun tripStartKey(sessionId: Long): String = "trip_start_\$sessionId"
+    }
+}
