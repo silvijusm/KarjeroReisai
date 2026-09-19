@@ -17,7 +17,8 @@ data class AuthUiState(
     val name: String = "",
     val companyId: String? = null,
     val role: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val infoMessage: String? = null
 )
 
 class AuthViewModel : ViewModel() {
@@ -47,7 +48,7 @@ class AuthViewModel : ViewModel() {
             return
         }
 
-        _state.value = _state.value.copy(loading = true, error = null)
+        _state.value = _state.value.copy(loading = true, error = null, infoMessage = null)
         auth.signInWithEmailAndPassword(cleanEmail, password)
             .addOnFailureListener { error ->
                 _state.value = AuthUiState(
@@ -76,7 +77,7 @@ class AuthViewModel : ViewModel() {
             return
         }
 
-        _state.value = _state.value.copy(loading = true, error = null)
+        _state.value = _state.value.copy(loading = true, error = null, infoMessage = null)
 
         auth.createUserWithEmailAndPassword(cleanEmail, password)
             .addOnSuccessListener { result ->
@@ -131,12 +132,41 @@ class AuthViewModel : ViewModel() {
             }
     }
 
+    fun resetPassword(email: String) {
+        val cleanEmail = email.trim()
+        if (cleanEmail.isBlank()) {
+            _state.value = _state.value.copy(
+                error = "Pirmiausia įveskite savo el. pašto adresą.",
+                infoMessage = null
+            )
+            return
+        }
+
+        _state.value = _state.value.copy(loading = true, error = null, infoMessage = null)
+        auth.sendPasswordResetEmail(cleanEmail)
+            .addOnSuccessListener {
+                _state.value = _state.value.copy(
+                    loading = false,
+                    error = null,
+                    infoMessage = "Slaptažodžio atkūrimo nuoroda išsiųsta į " + cleanEmail + "."
+                )
+            }
+            .addOnFailureListener { error ->
+                _state.value = _state.value.copy(
+                    loading = false,
+                    error = "Nepavyko išsiųsti atkūrimo laiško: " +
+                        (error.localizedMessage ?: "nežinoma klaida"),
+                    infoMessage = null
+                )
+            }
+    }
+
     fun signOut() {
         auth.signOut()
     }
 
     fun clearError() {
-        _state.value = _state.value.copy(error = null)
+        _state.value = _state.value.copy(error = null, infoMessage = null)
     }
 
     private fun loadProfile(user: FirebaseUser) {
@@ -145,7 +175,8 @@ class AuthViewModel : ViewModel() {
             signedIn = true,
             uid = user.uid,
             email = user.email.orEmpty(),
-            error = null
+            error = null,
+            infoMessage = null
         )
 
         firestore.collection("users").document(user.uid).get()
