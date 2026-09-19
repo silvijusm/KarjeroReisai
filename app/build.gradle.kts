@@ -12,8 +12,8 @@ android {
         applicationId = "lt.karjeroreisai.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     buildFeatures {
@@ -55,5 +55,5 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     implementation("com.google.android.gms:play-services-location:21.4.0")
-    implementation("com.google.maps.android:maps-compose:6.12.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 }
