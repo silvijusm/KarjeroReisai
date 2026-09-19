@@ -1,0 +1,21 @@
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+node_modules/
+.firebase/
+*-debug.log*
+.env
+.env.*
+!.env.example
+secrets.properties
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*service-account*.json
+*serviceAccount*.json
+# Existing tracked Firebase client config remains until its restricted replacement is verified.
+**/google-services.json
