@@ -112,6 +112,7 @@ fun KarjeroReisaiApp(
                         state = authState,
                         onSignIn = authViewModel::signIn,
                         onRegister = authViewModel::registerCompanyAdmin,
+                        onResetPassword = authViewModel::resetPassword,
                         onClearError = authViewModel::clearError
                     )
                 }
