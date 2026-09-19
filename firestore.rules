@@ -1,37 +1,69 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
+    function signedIn() { return request.auth != null; }
     function currentUser() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
-
+    // This role can only be provisioned by a trusted administrator / Admin SDK.
     function isSuperAdmin() {
-      return signedIn() && currentUser().data.role == "super_admin";
+      return signedIn() && currentUser().data.role == 'super_admin';
     }
-
+    function validName(value) {
+      return value is string && value.size() > 0 && value.size() <= 200;
+    }
+    function validProfile(data) {
+      return data.keys().hasAll(['email', 'name', 'role', 'companyId', 'createdAt'])
+        && data.keys().hasOnly(['email', 'name', 'role', 'companyId', 'createdAt'])
+        && validName(data.name)
+        && data.email is string
+        && data.email == request.auth.token.email
+        && data.companyId is string && data.companyId.size() > 0;
+    }
+    function validCompany(data) {
+      return data.keys().hasAll(['name', 'ownerUid', 'plan', 'trialEndsAtMillis', 'createdAt'])
+        && data.keys().hasOnly(['name', 'ownerUid', 'plan', 'trialEndsAtMillis', 'createdAt'])
+        && validName(data.name);
+    }
     match /users/{uid} {
-      allow create: if signedIn()
-        && request.auth.uid == uid
-        && request.resource.data.role == "company_admin";
-      allow read: if signedIn()
-        && (request.auth.uid == uid || isSuperAdmin());
-      allow update: if signedIn()
-        && request.auth.uid == uid
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.companyId == resource.data.companyId;
+      // Registration must atomically create BOTH the new company and its owner.
+      allow create: if signedIn() && request.auth.uid == uid
+        && validProfile(request.resource.data)
+        && request.resource.data.role == 'company_admin'
+        && request.resource.data.createdAt == request.time
+        && !exists(/databases/$(database)/documents/companies/$(request.resource.data.companyId))
+        && getAfter(/databases/$(database)/documents/companies/$(request.resource.data.companyId)).data.ownerUid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isSuperAdmin());
+      // Role, tenant membership, email and creation time are not client-editable.
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && validName(request.resource.data.name);
     }
-
     match /companies/{companyId} {
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow read: if signedIn()
-        && (isSuperAdmin() || currentUser().data.companyId == companyId);
+      allow create: if signedIn() && validCompany(request.resource.data)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.plan == 'trial'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.trialEndsAtMillis is int
+        // Keep the Android millisecond field; bound client clock skew to five minutes.
+        && request.resource.data.trialEndsAtMillis >= request.time.toMillis() + 5183700000
+        && request.resource.data.trialEndsAtMillis <= request.time.toMillis() + 5184300000
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin';
+      // Do not trust legacy profiles that may already contain a forged companyId.
+      allow read: if signedIn() && (isSuperAdmin()
+        || (resource.data.ownerUid == request.auth.uid
+          && currentUser().data.companyId == companyId
+          && currentUser().data.role == 'company_admin'));
+      // Billing, trial end and ownership changes require the trusted Admin SDK.
       allow update: if signedIn()
-        && (isSuperAdmin() || resource.data.ownerUid == request.auth.uid);
+        && (isSuperAdmin() || (resource.data.ownerUid == request.auth.uid
+          && currentUser().data.companyId == companyId
+          && currentUser().data.role == 'company_admin'))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && validName(request.resource.data.name);
     }
+    // No client deletes; unmatched collections are denied by default.
   }
 }
