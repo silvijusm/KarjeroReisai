@@ -65,10 +65,14 @@ import java.util.Locale
 private enum class Screen { HOME, HISTORY, MAP, SUMMARY }
 
 @Composable
-fun KarjeroReisaiApp(viewModel: MainViewModel) {
+fun KarjeroReisaiApp(
+    viewModel: MainViewModel,
+    authViewModel: AuthViewModel
+) {
     val context = LocalContext.current
     val dashboard by viewModel.dashboard.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
+    val authState by authViewModel.state.collectAsStateWithLifecycle()
 
     var screen by remember { mutableStateOf(Screen.HOME) }
     var selectedSessionId by remember { mutableLongStateOf(-1L) }
@@ -93,94 +97,118 @@ fun KarjeroReisaiApp(viewModel: MainViewModel) {
 
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
-            dashboard.statusMessage?.let { message ->
-                AlertDialog(
-                    onDismissRequest = viewModel::clearStatusMessage,
-                    confirmButton = {
-                        TextButton(onClick = viewModel::clearStatusMessage) { Text("Gerai") }
-                    },
-                    text = { Text(message) }
-                )
-            }
+            when {
+                authState.loading -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(20.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("Jungiama prie paskyros...")
+                    }
+                }
 
-            when (screen) {
-                Screen.HOME -> if (dashboard.session == null) {
-                    StartScreen(
-                        onStart = { loading, unloading, truck, trailer, weight, autoCount, radius, mode, rate ->
-                            val action = {
-                                viewModel.startSession(
-                                    loading,
-                                    unloading,
-                                    truck,
-                                    trailer,
-                                    weight,
-                                    autoCount,
-                                    radius,
-                                    mode,
-                                    rate
-                                ) { id -> startTracking(context, id) }
-                            }
-
-                            if (hasLocationPermission(context)) action()
-                            else {
-                                pendingStart = action
-                                permissionLauncher.launch(requiredPermissions())
-                            }
-                        },
-                        onHistory = {
-                            viewModel.loadHistory()
-                            screen = Screen.HISTORY
-                        }
-                    )
-                } else {
-                    WorkScreen(
-                        state = dashboard,
-                        onTrip = viewModel::addTripManual,
-                        onSetB = viewModel::setUnloadingZoneHereAndCountFirstTrip,
-                        onUndo = viewModel::undoLastTrip,
-                        onMap = {
-                            selectedSessionId = dashboard.session!!.id
-                            screen = Screen.MAP
-                        },
-                        onHistory = {
-                            viewModel.loadHistory()
-                            screen = Screen.HISTORY
-                        },
-                        onEnd = {
-                            viewModel.endSession { id ->
-                                stopTracking(context)
-                                selectedSessionId = id
-                                screen = Screen.SUMMARY
-                            }
-                        }
+                !authState.signedIn -> {
+                    AuthScreen(
+                        state = authState,
+                        onSignIn = authViewModel::signIn,
+                        onRegister = authViewModel::registerCompanyAdmin,
+                        onClearError = authViewModel::clearError
                     )
                 }
 
-                Screen.HISTORY -> HistoryScreen(
-                    sessions = history,
-                    onBack = { screen = Screen.HOME },
-                    onOpen = { id ->
-                        selectedSessionId = id
-                        screen = Screen.SUMMARY
+                else -> {
+                    dashboard.statusMessage?.let { message ->
+                        AlertDialog(
+                            onDismissRequest = viewModel::clearStatusMessage,
+                            confirmButton = {
+                                TextButton(onClick = viewModel::clearStatusMessage) { Text("Gerai") }
+                            },
+                            text = { Text(message) }
+                        )
                     }
-                )
 
-                Screen.MAP -> SessionMapScreen(
-                    viewModel = viewModel,
-                    sessionId = selectedSessionId,
-                    onBack = { screen = Screen.SUMMARY }
-                )
+                    when (screen) {
+                        Screen.HOME -> if (dashboard.session == null) {
+                            StartScreen(
+                                accountLabel = authState.email,
+                                onLogout = authViewModel::signOut,
+                                onStart = { loading, unloading, truck, trailer, weight, autoCount, radius, mode, rate ->
+                                    val action = {
+                                        viewModel.startSession(
+                                            loading,
+                                            unloading,
+                                            truck,
+                                            trailer,
+                                            weight,
+                                            autoCount,
+                                            radius,
+                                            mode,
+                                            rate
+                                        ) { id -> startTracking(context, id) }
+                                    }
 
-                Screen.SUMMARY -> SummaryScreen(
-                    viewModel = viewModel,
-                    sessionId = selectedSessionId,
-                    onBack = {
-                        viewModel.loadHistory()
-                        screen = Screen.HISTORY
-                    },
-                    onHome = { screen = Screen.HOME },
-                    onMap = { screen = Screen.MAP }
-                )
+                                    if (hasLocationPermission(context)) action()
+                                    else {
+                                        pendingStart = action
+                                        permissionLauncher.launch(requiredPermissions())
+                                    }
+                                },
+                                onHistory = {
+                                    viewModel.loadHistory()
+                                    screen = Screen.HISTORY
+                                }
+                            )
+                        } else {
+                            WorkScreen(
+                                state = dashboard,
+                                onTrip = viewModel::addTripManual,
+                                onSetB = viewModel::setUnloadingZoneHereAndCountFirstTrip,
+                                onUndo = viewModel::undoLastTrip,
+                                onMap = {
+                                    selectedSessionId = dashboard.session!!.id
+                                    screen = Screen.MAP
+                                },
+                                onHistory = {
+                                    viewModel.loadHistory()
+                                    screen = Screen.HISTORY
+                                },
+                                onEnd = {
+                                    viewModel.endSession { id ->
+                                        stopTracking(context)
+                                        selectedSessionId = id
+                                        screen = Screen.SUMMARY
+                                    }
+                                }
+                            )
+                        }
+
+                        Screen.HISTORY -> HistoryScreen(
+                            sessions = history,
+                            onBack = { screen = Screen.HOME },
+                            onOpen = { id ->
+                                selectedSessionId = id
+                                screen = Screen.SUMMARY
+                            }
+                        )
+
+                        Screen.MAP -> SessionMapScreen(
+                            viewModel = viewModel,
+                            sessionId = selectedSessionId,
+                            onBack = { screen = Screen.SUMMARY }
+                        )
+
+                        Screen.SUMMARY -> SummaryScreen(
+                            viewModel = viewModel,
+                            sessionId = selectedSessionId,
+                            onBack = {
+                                viewModel.loadHistory()
+                                screen = Screen.HISTORY
+                            },
+                            onHome = { screen = Screen.HOME },
+                            onMap = { screen = Screen.MAP }
+                        )
+                    }
+                }
             }
         }
     }
@@ -188,6 +216,8 @@ fun KarjeroReisaiApp(viewModel: MainViewModel) {
 
 @Composable
 private fun StartScreen(
+    accountLabel: String,
+    onLogout: () -> Unit,
     onStart: (String, String, String, String, Double, Boolean, Double, BillingMode, Double) -> Unit,
     onHistory: () -> Unit
 ) {
@@ -207,6 +237,12 @@ private fun StartScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item { Text("Karjero reisai", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+        item { Text("Prisijungta: " + accountLabel) }
+        item {
+            TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
+                Text("Atsijungti")
+            }
+        }
         item { OutlinedTextField(loading, { loading = it }, label = { Text("Pakrovimo vieta") }, modifier = Modifier.fillMaxWidth()) }
         item { OutlinedTextField(unloading, { unloading = it }, label = { Text("Iškrovimo vieta") }, modifier = Modifier.fillMaxWidth()) }
         item { OutlinedTextField(truck, { truck = it }, label = { Text("Vilkikas") }, modifier = Modifier.fillMaxWidth()) }
