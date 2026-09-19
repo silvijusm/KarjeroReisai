@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -38,15 +39,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Polyline
 import kotlinx.coroutines.delay
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import kotlinx.coroutines.launch
 import lt.karjeroreisai.app.data.BillingMode
 import lt.karjeroreisai.app.data.GpsPoint
@@ -417,12 +422,15 @@ private fun SessionMapScreen(
     sessionId: Long,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     var points by remember(sessionId) { mutableStateOf<List<GpsPoint>>(emptyList()) }
 
     LaunchedEffect(sessionId) {
         val details = viewModel.sessionDetails(sessionId)
         points = details.third.filter { it.accuracy <= 60f }
     }
+
+    Configuration.getInstance().userAgentValue = context.packageName
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -436,10 +444,55 @@ private fun SessionMapScreen(
         if (points.isEmpty()) {
             Text("Šiam darbui GPS taškų nėra.", modifier = Modifier.padding(16.dp))
         } else {
-            val route = points.map { LatLng(it.latitude, it.longitude) }
-            GoogleMap(modifier = Modifier.fillMaxSize()) {
-                Polyline(points = route)
+            val mapView = remember(sessionId) {
+                MapView(context).apply {
+                    setTileSource(TileSourceFactory.MAPNIK)
+                    setMultiTouchControls(true)
+                    controller.setZoom(14.0)
+                }
             }
+
+            DisposableEffect(mapView) {
+                mapView.onResume()
+                onDispose {
+                    mapView.onPause()
+                    mapView.onDetach()
+                }
+            }
+
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { mapView },
+                update = { map ->
+                    map.overlays.clear()
+
+                    val geoPoints = points.map { GeoPoint(it.latitude, it.longitude) }
+                    if (geoPoints.isNotEmpty()) {
+                        val routeLine = Polyline().apply {
+                            setPoints(geoPoints)
+                            outlinePaint.strokeWidth = 7f
+                        }
+                        map.overlays.add(routeLine)
+
+                        val startMarker = Marker(map).apply {
+                            position = geoPoints.first()
+                            title = "Pradžia"
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        }
+                        map.overlays.add(startMarker)
+
+                        val endMarker = Marker(map).apply {
+                            position = geoPoints.last()
+                            title = "Pabaiga"
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        }
+                        map.overlays.add(endMarker)
+
+                        map.controller.setCenter(geoPoints.last())
+                    }
+                    map.invalidate()
+                }
+            )
         }
     }
 }
