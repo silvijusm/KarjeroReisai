@@ -27,6 +27,7 @@ fun AuthScreen(
     state: AuthUiState,
     onSignIn: (String, String) -> Unit,
     onRegister: (String, String, String, String) -> Unit,
+    onResetPassword: (String) -> Unit,
     onClearError: () -> Unit
 ) {
     var registerMode by remember { mutableStateOf(false) }
@@ -81,6 +82,9 @@ fun AuthScreen(
         state.error?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
+        state.infoMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.primary)
+        }
 
         Button(
             onClick = {
@@ -91,6 +95,16 @@ fun AuthScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (registerMode) "REGISTRUOTIS" else "PRISIJUNGTI")
+        }
+
+        if (!registerMode) {
+            TextButton(
+                onClick = { onResetPassword(email) },
+                enabled = !state.loading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Pamiršau slaptažodį")
+            }
         }
 
         TextButton(
