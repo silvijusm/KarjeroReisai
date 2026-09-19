@@ -12,7 +12,12 @@
           "package_name": "lt.karjeroreisai.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "810799850057-7efm7cs2kfagqaiegkajc6brqvd0lqfh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA2GbGaErWiDJdj7axWEOoIRzukR9A8fTg"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "810799850057-7efm7cs2kfagqaiegkajc6brqvd0lqfh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
