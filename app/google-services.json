@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "810799850057",
+    "project_id": "karjieroreisai",
+    "storage_bucket": "karjieroreisai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:810799850057:android:ecb14214af295edd49d598",
+        "android_client_info": {
+          "package_name": "lt.karjeroreisai.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2GbGaErWiDJdj7axWEOoIRzukR9A8fTg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
