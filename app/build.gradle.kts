@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -12,8 +13,8 @@ android {
         applicationId = "lt.karjeroreisai.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
     }
 
     buildFeatures {
@@ -38,9 +39,11 @@ android {
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.08.01")
+    val firebaseBom = platform("com.google.firebase:firebase-bom:34.19.0")
 
     implementation(composeBom)
     androidTestImplementation(composeBom)
+    implementation(firebaseBom)
 
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.activity:activity-compose:1.13.0")
@@ -56,4 +59,7 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-location:21.4.0")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
 }
