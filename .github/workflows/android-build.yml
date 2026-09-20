@@ -34,8 +34,6 @@ jobs:
         with:
           gradle-version: "8.13"
           cache-provider: basic
-          # Temporary: verify cache save/restore in this PR before merging.
-          cache-read-only: false
 
       - name: Prepare Firebase client configuration
         env:
