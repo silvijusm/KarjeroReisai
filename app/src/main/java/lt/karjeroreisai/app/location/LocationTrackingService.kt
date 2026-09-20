@@ -1,5 +1,7 @@
 package lt.karjeroreisai.app.location
 
+import lt.karjeroreisai.app.R
+import lt.karjeroreisai.app.AppLanguage
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -69,8 +71,8 @@ class LocationTrackingService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentTitle("Karjero reisai")
-            .setContentText("GPS ir reisų apskaita veikia")
+            .setContentTitle(AppLanguage.wrap(this).getString(R.string.app_name))
+            .setContentText(AppLanguage.wrap(this).getString(R.string.gps_running))
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
@@ -233,10 +235,10 @@ class LocationTrackingService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "GPS sekimas",
+            AppLanguage.wrap(this).getString(R.string.gps_tracking),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Karjero reisų GPS ir automatinė reisų apskaita"
+            description = AppLanguage.wrap(this@LocationTrackingService).getString(R.string.gps_running)
         }
         manager.createNotificationChannel(channel)
     }

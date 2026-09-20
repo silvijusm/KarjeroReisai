@@ -1,5 +1,7 @@
 package lt.karjeroreisai.app.ui
 
+import lt.karjeroreisai.app.R
+import lt.karjeroreisai.app.AppLanguage
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
@@ -142,9 +144,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
             _dashboard.value = _dashboard.value.copy(
                 statusMessage = if (inserted > 0L)
-                    "Reisas įrašytas rankiniu būdu."
+                    AppLanguage.wrap(getApplication()).getString(R.string.trip_added)
                 else
-                    "Reisas neįrašytas: per paskutinę minutę jau buvo įrašytas reisas."
+                    AppLanguage.wrap(getApplication()).getString(R.string.trip_duplicate)
             )
             refresh()
         }
@@ -156,7 +158,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val message = withContext(Dispatchers.IO) {
                 val current = latestLocation()
-                    ?: return@withContext "Dar nėra tikslios GPS vietos. Palaukite kelias sekundes."
+                    ?: return@withContext AppLanguage.wrap(getApplication()).getString(R.string.gps_wait)
 
                 val now = System.currentTimeMillis()
                 db.setUnloadingZone(session.id, current.first, current.second)
@@ -192,9 +194,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     .apply()
 
                 if (inserted > 0L)
-                    "Iškrovimo zona B nustatyta. Pirmas reisas įrašytas."
+                    AppLanguage.wrap(getApplication()).getString(R.string.zone_added)
                 else
-                    "Iškrovimo zona B nustatyta. Reisas jau buvo ką tik įrašytas."
+                    AppLanguage.wrap(getApplication()).getString(R.string.zone_duplicate)
             }
 
             _dashboard.value = _dashboard.value.copy(statusMessage = message)
@@ -206,7 +208,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val session = _dashboard.value.session ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) { db.undoLastTrip(session.id) }
-            _dashboard.value = _dashboard.value.copy(statusMessage = "Paskutinis reisas atšauktas.")
+            _dashboard.value = _dashboard.value.copy(statusMessage = AppLanguage.wrap(getApplication()).getString(R.string.trip_undone))
             refresh()
         }
     }
