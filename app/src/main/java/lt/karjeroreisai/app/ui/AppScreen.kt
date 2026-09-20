@@ -144,6 +144,31 @@ fun KarjeroReisaiApp(
                     )
                 }
 
+                authState.role == "company_admin" && !authState.accessAllowed -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(20.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.plan_inactive),
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        Text(stringResource(R.string.subscription))
+                        Button(
+                            onClick = { settingsOpen = true },
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        ) {
+                            Text(stringResource(R.string.settings))
+                        }
+                        OutlinedButton(
+                            onClick = authViewModel::signOut,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.sign_out))
+                        }
+                    }
+                }
+
                 else -> {
                     dashboard.statusMessage?.let { message ->
                         AlertDialog(
