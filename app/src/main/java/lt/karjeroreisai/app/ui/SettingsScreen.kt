@@ -56,8 +56,9 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
                 }))
                 if (auth.role == "super_admin") {
                     Button(onClick = { adminOpen = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.admin)) }
+                } else if (auth.role == "company_admin") {
+                    SubscriptionPanel(auth)
                 }
-                SubscriptionPanel(auth)
                 if (working) Text(stringResource(R.string.end_before_logout))
                 OutlinedButton(onClick = onLogout, enabled = !working && !auth.loading, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.sign_out))

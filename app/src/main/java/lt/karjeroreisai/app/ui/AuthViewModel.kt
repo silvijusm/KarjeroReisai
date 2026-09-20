@@ -192,7 +192,14 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         firestore.collection("users").document(user.uid).get()
             .addOnSuccessListener { document ->
                 if (auth.currentUser?.uid != user.uid) return@addOnSuccessListener
-                if (!document.exists() || document.getString("role") !in listOf("company_admin", "super_admin") || document.getString("companyId").isNullOrBlank()) {
+                val role = document.getString("role")
+                val companyId = document.getString("companyId")
+                val validProfile = document.exists() && when (role) {
+                    "company_admin" -> !companyId.isNullOrBlank()
+                    "super_admin" -> true
+                    else -> false
+                }
+                if (!validProfile) {
                     auth.signOut()
                     _state.value = AuthUiState(loading = false, error = message(R.string.profile_failed))
                     return@addOnSuccessListener
@@ -203,8 +210,8 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     uid = user.uid,
                     email = user.email.orEmpty(),
                     name = document.getString("name").orEmpty(),
-                    companyId = document.getString("companyId"),
-                    role = document.getString("role"),
+                    companyId = companyId,
+                    role = role,
                     error = null
                 )
             }
