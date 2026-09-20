@@ -20,6 +20,9 @@ data class AuthUiState(
     val name: String = "",
     val companyId: String? = null,
     val role: String? = null,
+    val plan: String? = null,
+    val trialEndsAtMillis: Long? = null,
+    val accessAllowed: Boolean = true,
     val error: String? = null,
     val infoMessage: String? = null
 )
@@ -204,16 +207,57 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     _state.value = AuthUiState(loading = false, error = message(R.string.profile_failed))
                     return@addOnSuccessListener
                 }
-                _state.value = AuthUiState(
-                    loading = false,
-                    signedIn = true,
-                    uid = user.uid,
-                    email = user.email.orEmpty(),
-                    name = document.getString("name").orEmpty(),
-                    companyId = companyId,
-                    role = role,
-                    error = null
-                )
+                if (role == "company_admin") {
+                    val id = companyId!!
+                    firestore.collection("companies").document(id).get()
+                        .addOnSuccessListener { company ->
+                            if (auth.currentUser?.uid != user.uid) return@addOnSuccessListener
+                            val plan = company.getString("plan")
+                            val trialEndsAtMillis = company.getLong("trialEndsAtMillis")
+                            val accessAllowed = plan == "paid" ||
+                                (plan == "trial" && trialEndsAtMillis != null &&
+                                    trialEndsAtMillis > System.currentTimeMillis())
+                            _state.value = AuthUiState(
+                                loading = false,
+                                signedIn = true,
+                                uid = user.uid,
+                                email = user.email.orEmpty(),
+                                name = document.getString("name").orEmpty(),
+                                companyId = id,
+                                role = role,
+                                plan = plan,
+                                trialEndsAtMillis = trialEndsAtMillis,
+                                accessAllowed = accessAllowed,
+                                error = null
+                            )
+                        }
+                        .addOnFailureListener {
+                            if (auth.currentUser?.uid != user.uid) return@addOnFailureListener
+                            _state.value = AuthUiState(
+                                loading = false,
+                                signedIn = true,
+                                uid = user.uid,
+                                email = user.email.orEmpty(),
+                                name = document.getString("name").orEmpty(),
+                                companyId = id,
+                                role = role,
+                                accessAllowed = false,
+                                error = message(R.string.load_failed)
+                            )
+                        }
+                } else {
+                    _state.value = AuthUiState(
+                        loading = false,
+                        signedIn = true,
+                        uid = user.uid,
+                        email = user.email.orEmpty(),
+                        name = document.getString("name").orEmpty(),
+                        companyId = companyId,
+                        role = role,
+                        accessAllowed = true,
+                        error = null
+                    )
+                }
             }
             .addOnFailureListener { error ->
                 if (auth.currentUser?.uid != user.uid) return@addOnFailureListener
