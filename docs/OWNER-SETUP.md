@@ -42,6 +42,18 @@ Pirmiausia viską patikrinkite Stripe test režime. Tik po sėkmingo pilno testi
 
 Savininko paskyra nebekviečia kliento prenumeratos funkcijų, todėl atskira administratoriaus paskyra gali veikti ir be `companyId`.
 
-## 4. Saugumo taisyklė
+## 4. Pasirašytas Android leidimas
+
+GitHub workflow `Build signed Android release` yra skirtas tik rankiniam paleidimui ir kuria abu failus: pasirašytą APK bei AAB. Prieš pirmą paleidimą GitHub Actions Secrets turi būti nustatyti:
+
+- `ANDROID_KEYSTORE_BASE64` – jūsų release keystore failas, užkoduotas Base64;
+- `ANDROID_KEYSTORE_PASSWORD` – keystore slaptažodis;
+- `ANDROID_KEY_ALIAS` – pasirašymo rakto alias;
+- `ANDROID_KEY_PASSWORD` – rakto slaptažodis;
+- rekomenduojama nustatyti `GOOGLE_SERVICES_JSON`, kad release buildas naudotų patikrintą Firebase kliento konfigūraciją.
+
+Privatus pasirašymo raktas neturi būti commitinamas į GitHub. Praradus release raktą gali būti neįmanoma saugiai atnaujinti jau išplatintos programėlės, todėl originalą ir slaptažodžius laikykite atskiroje saugioje atsarginėje vietoje.
+
+## 5. Saugumo taisyklė
 
 Niekada nedėkite Stripe secret, service-account privataus rakto ar administratoriaus privilegijų suteikimo rakto į Android APK, Git istoriją ar viešą GitHub Actions žurnalą.
