@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -85,6 +86,40 @@ fun KarjeroReisaiApp(
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
     var selectedSessionId by rememberSaveable { mutableLongStateOf(-1L) }
     var pendingStart by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var companyPlan by remember(authState.uid, authState.companyId) { mutableStateOf<String?>(null) }
+    var trialEndsAtMillis by remember(authState.uid, authState.companyId) { mutableLongStateOf(0L) }
+    var entitlementLoading by remember(authState.uid, authState.companyId) { mutableStateOf(false) }
+
+    DisposableEffect(authState.signedIn, authState.role, authState.companyId) {
+        if (authState.signedIn && authState.role == "company_admin" && !authState.companyId.isNullOrBlank()) {
+            entitlementLoading = true
+            val registration = FirebaseFirestore.getInstance()
+                .collection("companies")
+                .document(authState.companyId!!)
+                .addSnapshotListener { document, failure ->
+                    entitlementLoading = false
+                    if (failure == null && document != null && document.exists()) {
+                        companyPlan = document.getString("plan")
+                        trialEndsAtMillis = document.getLong("trialEndsAtMillis") ?: 0L
+                    } else {
+                        companyPlan = null
+                        trialEndsAtMillis = 0L
+                    }
+                }
+            onDispose { registration.remove() }
+        } else {
+            entitlementLoading = false
+            companyPlan = if (authState.role == "super_admin") "paid" else null
+            trialEndsAtMillis = 0L
+            onDispose { }
+        }
+    }
+
+    val canStartWork =
+        authState.role == "super_admin" ||
+            (authState.role == "company_admin" &&
+                (companyPlan == "paid" || (companyPlan == "trial" && trialEndsAtMillis > nowMillis)))
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -99,6 +134,7 @@ fun KarjeroReisaiApp(
     LaunchedEffect(Unit) {
         while (true) {
             viewModel.refresh()
+            nowMillis = System.currentTimeMillis()
             delay(2_000L)
         }
     }
@@ -159,6 +195,9 @@ fun KarjeroReisaiApp(
                         Screen.HOME -> if (dashboard.session == null) {
                             StartScreen(
                                 accountLabel = authState.email,
+                                canStartWork = canStartWork,
+                                entitlementLoading = entitlementLoading,
+                                onSubscription = { settingsOpen = true },
                                 onLogout = authViewModel::signOut,
                                 onStart = { loading, unloading, truck, trailer, weight, autoCount, radius, mode, rate ->
                                     val action = {
@@ -247,6 +286,9 @@ fun KarjeroReisaiApp(
 @Composable
 private fun StartScreen(
     accountLabel: String,
+    canStartWork: Boolean,
+    entitlementLoading: Boolean,
+    onSubscription: () -> Unit,
     onLogout: () -> Unit,
     onStart: (String, String, String, String, Double, Boolean, Double, BillingMode, Double) -> Unit,
     onHistory: () -> Unit
@@ -328,6 +370,16 @@ private fun StartScreen(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+        if (entitlementLoading) {
+            item { Text(stringResource(R.string.loading)) }
+        } else if (!canStartWork) {
+            item { Text(stringResource(R.string.plan_inactive), color = MaterialTheme.colorScheme.error) }
+            item {
+                Button(onClick = onSubscription, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.subscription))
+                }
+            }
+        }
         item {
             Button(
                 onClick = {
@@ -343,7 +395,7 @@ private fun StartScreen(
                         rateText.replace(',', '.').toDoubleOrNull() ?: 0.0
                     )
                 },
-                enabled = loading.isNotBlank() && unloading.isNotBlank(),
+                enabled = canStartWork && !entitlementLoading && loading.isNotBlank() && unloading.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) { Text(stringResource(R.string.start_work)) }
         }
