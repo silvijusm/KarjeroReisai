@@ -19,3 +19,7 @@ keystore.properties
 *serviceAccount*.json
 # Existing tracked Firebase client config remains until its restricted replacement is verified.
 **/google-services.json
+
+# Local function configuration and dependencies
+functions/node_modules/
+functions/.env*

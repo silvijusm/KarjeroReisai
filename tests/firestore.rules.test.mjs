@@ -1,7 +1,7 @@
 import { before, after, beforeEach, test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, documentId, limit, doc, setDoc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
 let env;
 before(async () => {
   if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('Use npm run test:rules (emulator only).');
@@ -107,4 +107,21 @@ test('trusted super admin can read companies but billing remains server-only', a
   await assertSucceeds(getDoc(doc(db('support'), 'companies', 'a')));
   await assertSucceeds(getDoc(doc(db('support'), 'users', 'alice')));
   await assertFails(updateDoc(doc(db('support'), 'companies', 'a'), { plan: 'paid' }));
+});
+
+test('company list is restricted to trusted administrators', async () => {
+  await register('alice', 'a');
+  await seedUser('support', { role: 'super_admin' });
+  await assertSucceeds(getDocs(query(collection(db('support'), 'companies'), orderBy(documentId()), limit(50))));
+  await assertFails(getDocs(collection(db('alice'), 'companies')));
+});
+test('billing customer mappings and webhook receipts remain server-only for all clients', async () => {
+  await register('alice', 'a');
+  await seedUser('support', { role: 'super_admin' });
+  for (const uid of ['alice', 'support']) {
+    for (const name of ['billingCustomers', 'billingEvents']) {
+      await assertFails(getDoc(doc(db(uid), name, 'a')));
+      await assertFails(setDoc(doc(db(uid), name, 'a'), { customerId: 'fake', processed: true }));
+    }
+  }
 });

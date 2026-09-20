@@ -1,6 +1,7 @@
 package lt.karjeroreisai.app.report
 
 import android.content.Context
+import lt.karjeroreisai.app.R
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
@@ -37,7 +38,7 @@ object PdfReportGenerator {
         val canvas = page.canvas
 
         val title = Paint().apply {
-            textSize = 22f
+            textSize = 16f
             isFakeBoldText = true
         }
         val h = Paint().apply {
@@ -49,7 +50,7 @@ object PdfReportGenerator {
         }
 
         var y = 45f
-        canvas.drawText("KARJERO REISAI – DIENOS ATASKAITA", 35f, y, title)
+        canvas.drawText(context.getString(R.string.report_title), 35f, y, title)
         y += 35f
 
         fun line(label: String, value: String) {
@@ -58,28 +59,28 @@ object PdfReportGenerator {
             y += 20f
         }
 
-        line("Data:", session.date)
-        line("Maršrutas:", "${session.loadingPlace} -> ${session.unloadingPlace}")
-        line("Vilkikas:", session.truck.ifBlank { "-" })
-        line("Puspriekabė:", session.trailer.ifBlank { "-" })
-        line("Darbo pradžia:", time(session.startTime))
-        line("Darbo pabaiga:", session.endTime?.let(::time) ?: "-")
-        line("Reisų:", trips.size.toString())
-        line("Pervežta:", "%.1f t".format(trips.sumOf { it.weight }))
-        line("Visas GPS atstumas:", "%.1f km".format(totalDistanceKm))
-        line("Pajamos:", "%.2f EUR".format(earnings))
-        line("Tarifas:", billingText(session))
+        line(context.getString(R.string.date_value, "").trim(), session.date)
+        line(context.getString(R.string.route_value, "").trim(), "${session.loadingPlace} -> ${session.unloadingPlace}")
+        line(context.getString(R.string.truck), session.truck.ifBlank { "-" })
+        line(context.getString(R.string.trailer), session.trailer.ifBlank { "-" })
+        line(context.getString(R.string.report_start), time(session.startTime))
+        line(context.getString(R.string.report_end), session.endTime?.let(::time) ?: "-")
+        line(context.getString(R.string.report_trips), trips.size.toString())
+        line(context.getString(R.string.transported, "").substringBefore(":"), "%.1f t".format(trips.sumOf { it.weight }))
+        line(context.getString(R.string.gps_distance, "").substringBefore(":"), "%.1f km".format(totalDistanceKm))
+        line(context.getString(R.string.earnings, "").substringBefore(":"), "%.2f EUR".format(earnings))
+        line(context.getString(R.string.rate, "").trim(), billingText(context, session))
 
         y += 14f
-        canvas.drawText("REISAI", 35f, y, title)
+        canvas.drawText(context.getString(R.string.report_trips), 35f, y, title)
         y += 24f
 
         canvas.drawText("Nr.", 35f, y, h)
-        canvas.drawText("Laikas", 70f, y, h)
+        canvas.drawText(context.getString(R.string.report_time), 70f, y, h)
         canvas.drawText("t", 140f, y, h)
         canvas.drawText("km", 190f, y, h)
-        canvas.drawText("Trukmė", 250f, y, h)
-        canvas.drawText("Būdas", 340f, y, h)
+        canvas.drawText(context.getString(R.string.report_duration), 250f, y, h)
+        canvas.drawText(context.getString(R.string.report_source), 340f, y, h)
         y += 18f
 
         trips.forEach { trip ->
@@ -89,7 +90,7 @@ object PdfReportGenerator {
             canvas.drawText("%.1f".format(trip.weight), 140f, y, body)
             canvas.drawText("%.1f".format(trip.distanceKm), 190f, y, body)
             canvas.drawText(duration(trip.durationMs), 250f, y, body)
-            canvas.drawText(trip.source, 340f, y, body)
+            canvas.drawText(context.getString(if (trip.source == "AUTO") R.string.report_auto else R.string.report_manual), 340f, y, body)
             y += 17f
         }
 
@@ -107,11 +108,11 @@ object PdfReportGenerator {
         return "%02d:%02d".format(min / 60, min % 60)
     }
 
-    private fun billingText(session: WorkSession): String =
+    private fun billingText(context: Context, session: WorkSession): String =
         when (session.billingMode) {
-            BillingMode.PER_TRIP -> "%.2f EUR / reisas".format(session.rate)
-            BillingMode.PER_TON -> "%.2f EUR / t".format(session.rate)
-            BillingMode.PER_DAY -> "%.2f EUR / diena".format(session.rate)
-            BillingMode.PER_TON_KM -> "%.4f EUR / t-km".format(session.rate)
+            BillingMode.PER_TRIP -> "%.2f".format(session.rate) + " " + context.getString(R.string.per_trip)
+            BillingMode.PER_TON -> "%.2f".format(session.rate) + " " + context.getString(R.string.per_ton)
+            BillingMode.PER_DAY -> "%.2f".format(session.rate) + " " + context.getString(R.string.per_day)
+            BillingMode.PER_TON_KM -> "%.2f".format(session.rate) + " " + context.getString(R.string.per_ton_km)
         }
 }

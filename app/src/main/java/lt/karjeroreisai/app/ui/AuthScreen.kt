@@ -11,6 +11,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.stringResource
+import lt.karjeroreisai.app.R
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,50 +35,50 @@ fun AuthScreen(
     onResetPassword: (String) -> Unit,
     onClearError: () -> Unit
 ) {
-    var registerMode by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var companyName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
+    var registerMode by rememberSaveable { mutableStateOf(false) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var companyName by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "Karjero reisai",
+            stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        Text(if (registerMode) "Sukurti įmonės paskyrą" else "Prisijungti")
+        Text(if (registerMode) stringResource(R.string.create_company) else stringResource(R.string.sign_in))
 
         if (registerMode) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Vardas") },
+                label = { Text(stringResource(R.string.name)) },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = companyName,
                 onValueChange = { companyName = it },
-                label = { Text("Įmonės pavadinimas") },
+                label = { Text(stringResource(R.string.company_name)) },
                 modifier = Modifier.fillMaxWidth()
             )
-            Text("Pirmi 2 mėnesiai – bandomasis laikotarpis.")
+            Text(stringResource(R.string.trial_intro))
         }
 
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("El. paštas") },
+            label = { Text(stringResource(R.string.email)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Slaptažodis") },
+            label = { Text(stringResource(R.string.password)) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
@@ -94,7 +99,7 @@ fun AuthScreen(
             enabled = !state.loading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (registerMode) "REGISTRUOTIS" else "PRISIJUNGTI")
+            Text(if (registerMode) stringResource(R.string.register) else stringResource(R.string.sign_in))
         }
 
         if (!registerMode) {
@@ -103,7 +108,7 @@ fun AuthScreen(
                 enabled = !state.loading,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Pamiršau slaptažodį")
+                Text(stringResource(R.string.forgot_password))
             }
         }
 
@@ -116,9 +121,9 @@ fun AuthScreen(
         ) {
             Text(
                 if (registerMode)
-                    "Jau turiu paskyrą – prisijungti"
+                    stringResource(R.string.have_account)
                 else
-                    "Neturiu paskyros – registruotis"
+                    stringResource(R.string.no_account)
             )
         }
     }

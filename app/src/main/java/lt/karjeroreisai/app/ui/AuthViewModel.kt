@@ -1,6 +1,9 @@
 package lt.karjeroreisai.app.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import lt.karjeroreisai.app.R
+import lt.karjeroreisai.app.AppLanguage
+import androidx.lifecycle.AndroidViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FieldValue
@@ -21,7 +24,9 @@ data class AuthUiState(
     val infoMessage: String? = null
 )
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(app: Application) : AndroidViewModel(app) {
+    private fun message(id: Int) = AppLanguage.wrap(getApplication()).getString(id)
+    private var registering = false
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
@@ -29,6 +34,7 @@ class AuthViewModel : ViewModel() {
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
     private val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        if (registering) return@AuthStateListener
         val user = firebaseAuth.currentUser
         if (user == null) {
             _state.value = AuthUiState(loading = false)
@@ -44,7 +50,7 @@ class AuthViewModel : ViewModel() {
     fun signIn(email: String, password: String) {
         val cleanEmail = email.trim()
         if (cleanEmail.isBlank() || password.isBlank()) {
-            _state.value = _state.value.copy(error = "Įveskite el. paštą ir slaptažodį.")
+            _state.value = _state.value.copy(error = message(R.string.credentials_required))
             return
         }
 
@@ -53,7 +59,7 @@ class AuthViewModel : ViewModel() {
             .addOnFailureListener { error ->
                 _state.value = AuthUiState(
                     loading = false,
-                    error = "Prisijungti nepavyko: " + (error.localizedMessage ?: "nežinoma klaida")
+                    error = message(R.string.sign_in_failed)
                 )
             }
     }
@@ -69,21 +75,23 @@ class AuthViewModel : ViewModel() {
         val cleanEmail = email.trim()
 
         if (cleanName.isBlank() || cleanCompany.isBlank() || cleanEmail.isBlank()) {
-            _state.value = _state.value.copy(error = "Užpildykite vardą, įmonę ir el. paštą.")
+            _state.value = _state.value.copy(error = message(R.string.registration_required))
             return
         }
         if (password.length < 6) {
-            _state.value = _state.value.copy(error = "Slaptažodis turi būti bent 6 simbolių.")
+            _state.value = _state.value.copy(error = message(R.string.password_short))
             return
         }
 
         _state.value = _state.value.copy(loading = true, error = null, infoMessage = null)
 
+        registering = true
         auth.createUserWithEmailAndPassword(cleanEmail, password)
             .addOnSuccessListener { result ->
                 val user = result.user
                 if (user == null) {
-                    _state.value = AuthUiState(loading = false, error = "Nepavyko sukurti vartotojo.")
+                    registering = false
+                    _state.value = AuthUiState(loading = false, error = message(R.string.registration_failed))
                     return@addOnSuccessListener
                 }
 
@@ -115,20 +123,23 @@ class AuthViewModel : ViewModel() {
                 )
 
                 batch.commit()
-                    .addOnSuccessListener { loadProfile(user) }
+                    .addOnSuccessListener { registering = false; loadProfile(user) }
                     .addOnFailureListener { error ->
+                        registering = false
                         user.delete()
+                        auth.signOut()
                         _state.value = AuthUiState(
                             loading = false,
-                            error = "Paskyra nesukurta: " + (error.localizedMessage ?: "duomenų bazės klaida")
+                            error = message(R.string.registration_failed)
                         )
                     }
             }
             .addOnFailureListener { error ->
                 _state.value = AuthUiState(
                     loading = false,
-                    error = "Registracija nepavyko: " + (error.localizedMessage ?: "nežinoma klaida")
+                    error = message(R.string.registration_failed)
                 )
+                registering = false
             }
     }
 
@@ -136,7 +147,7 @@ class AuthViewModel : ViewModel() {
         val cleanEmail = email.trim()
         if (cleanEmail.isBlank()) {
             _state.value = _state.value.copy(
-                error = "Pirmiausia įveskite savo el. pašto adresą.",
+                error = message(R.string.email_required),
                 infoMessage = null
             )
             return
@@ -148,14 +159,13 @@ class AuthViewModel : ViewModel() {
                 _state.value = _state.value.copy(
                     loading = false,
                     error = null,
-                    infoMessage = "Slaptažodžio atkūrimo nuoroda išsiųsta į " + cleanEmail + "."
+                    infoMessage = message(R.string.reset_sent)
                 )
             }
             .addOnFailureListener { error ->
                 _state.value = _state.value.copy(
                     loading = false,
-                    error = "Nepavyko išsiųsti atkūrimo laiško: " +
-                        (error.localizedMessage ?: "nežinoma klaida"),
+                    error = message(R.string.reset_failed),
                     infoMessage = null
                 )
             }
@@ -172,7 +182,7 @@ class AuthViewModel : ViewModel() {
     private fun loadProfile(user: FirebaseUser) {
         _state.value = _state.value.copy(
             loading = true,
-            signedIn = true,
+            signedIn = false,
             uid = user.uid,
             email = user.email.orEmpty(),
             error = null,
@@ -181,6 +191,12 @@ class AuthViewModel : ViewModel() {
 
         firestore.collection("users").document(user.uid).get()
             .addOnSuccessListener { document ->
+                if (auth.currentUser?.uid != user.uid) return@addOnSuccessListener
+                if (!document.exists() || document.getString("role") !in listOf("company_admin", "super_admin") || document.getString("companyId").isNullOrBlank()) {
+                    auth.signOut()
+                    _state.value = AuthUiState(loading = false, error = message(R.string.profile_failed))
+                    return@addOnSuccessListener
+                }
                 _state.value = AuthUiState(
                     loading = false,
                     signedIn = true,
@@ -193,12 +209,12 @@ class AuthViewModel : ViewModel() {
                 )
             }
             .addOnFailureListener { error ->
+                if (auth.currentUser?.uid != user.uid) return@addOnFailureListener
+                auth.signOut()
                 _state.value = AuthUiState(
                     loading = false,
-                    signedIn = true,
-                    uid = user.uid,
-                    email = user.email.orEmpty(),
-                    error = "Profilio nuskaityti nepavyko: " + (error.localizedMessage ?: "nežinoma klaida")
+                    signedIn = false,
+                    error = message(R.string.profile_failed)
                 )
             }
     }

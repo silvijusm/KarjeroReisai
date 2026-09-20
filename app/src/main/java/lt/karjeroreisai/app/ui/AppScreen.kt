@@ -7,6 +7,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +30,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.stringResource
+import lt.karjeroreisai.app.R
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -74,8 +82,8 @@ fun KarjeroReisaiApp(
     val history by viewModel.history.collectAsStateWithLifecycle()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
 
-    var screen by remember { mutableStateOf(Screen.HOME) }
-    var selectedSessionId by remember { mutableLongStateOf(-1L) }
+    var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
+    var selectedSessionId by rememberSaveable { mutableLongStateOf(-1L) }
     var pendingStart by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -95,15 +103,34 @@ fun KarjeroReisaiApp(
         }
     }
 
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+
     MaterialTheme {
+        if (settingsOpen) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { settingsOpen = false },
+                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Surface(Modifier.fillMaxSize()) {
+                    SettingsScreen(authState, dashboard.session != null,
+                        onBack = { settingsOpen = false },
+                        onLogout = { authViewModel.signOut(); settingsOpen = false })
+                }
+            }
+        }
         Surface(Modifier.fillMaxSize()) {
+          Column(Modifier.fillMaxSize().padding(androidx.compose.foundation.layout.WindowInsets.systemBars.asPaddingValues())) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { settingsOpen = true }) { Text(stringResource(R.string.settings)) }
+            }
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f)) {
             when {
                 authState.loading -> {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(20.dp),
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text("Jungiama prie paskyros...")
+                        Text(stringResource(R.string.connecting))
                     }
                 }
 
@@ -122,7 +149,7 @@ fun KarjeroReisaiApp(
                         AlertDialog(
                             onDismissRequest = viewModel::clearStatusMessage,
                             confirmButton = {
-                                TextButton(onClick = viewModel::clearStatusMessage) { Text("Gerai") }
+                                TextButton(onClick = viewModel::clearStatusMessage) { Text(stringResource(R.string.ok)) }
                             },
                             text = { Text(message) }
                         )
@@ -213,6 +240,8 @@ fun KarjeroReisaiApp(
             }
         }
     }
+          }
+        }
 }
 
 @Composable
@@ -222,37 +251,37 @@ private fun StartScreen(
     onStart: (String, String, String, String, Double, Boolean, Double, BillingMode, Double) -> Unit,
     onHistory: () -> Unit
 ) {
-    var loading by remember { mutableStateOf("") }
-    var unloading by remember { mutableStateOf("") }
-    var truck by remember { mutableStateOf("") }
-    var trailer by remember { mutableStateOf("") }
-    var weightText by remember { mutableStateOf("27") }
-    var radiusText by remember { mutableStateOf("150") }
-    var rateText by remember { mutableStateOf("0") }
-    var autoCount by remember { mutableStateOf(true) }
-    var mode by remember { mutableStateOf(BillingMode.PER_TRIP) }
+    var loading by rememberSaveable { mutableStateOf("") }
+    var unloading by rememberSaveable { mutableStateOf("") }
+    var truck by rememberSaveable { mutableStateOf("") }
+    var trailer by rememberSaveable { mutableStateOf("") }
+    var weightText by rememberSaveable { mutableStateOf("27") }
+    var radiusText by rememberSaveable { mutableStateOf("150") }
+    var rateText by rememberSaveable { mutableStateOf("0") }
+    var autoCount by rememberSaveable { mutableStateOf(true) }
+    var mode by rememberSaveable { mutableStateOf(BillingMode.PER_TRIP) }
     var menuOpen by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item { Text("Karjero reisai", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
-        item { Text("Prisijungta: " + accountLabel) }
+        item { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+        item { Text(stringResource(R.string.signed_in, accountLabel)) }
         item {
             TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
-                Text("Atsijungti")
+                Text(stringResource(R.string.sign_out))
             }
         }
-        item { OutlinedTextField(loading, { loading = it }, label = { Text("Pakrovimo vieta") }, modifier = Modifier.fillMaxWidth()) }
-        item { OutlinedTextField(unloading, { unloading = it }, label = { Text("Iškrovimo vieta") }, modifier = Modifier.fillMaxWidth()) }
-        item { OutlinedTextField(truck, { truck = it }, label = { Text("Vilkikas") }, modifier = Modifier.fillMaxWidth()) }
-        item { OutlinedTextField(trailer, { trailer = it }, label = { Text("Puspriekabė") }, modifier = Modifier.fillMaxWidth()) }
+        item { OutlinedTextField(loading, { loading = it }, label = { Text(stringResource(R.string.loading_place)) }, modifier = Modifier.fillMaxWidth()) }
+        item { OutlinedTextField(unloading, { unloading = it }, label = { Text(stringResource(R.string.unloading_place)) }, modifier = Modifier.fillMaxWidth()) }
+        item { OutlinedTextField(truck, { truck = it }, label = { Text(stringResource(R.string.truck)) }, modifier = Modifier.fillMaxWidth()) }
+        item { OutlinedTextField(trailer, { trailer = it }, label = { Text(stringResource(R.string.trailer)) }, modifier = Modifier.fillMaxWidth()) }
         item {
             OutlinedTextField(
                 weightText,
                 { weightText = it },
-                label = { Text("Svoris, t") },
+                label = { Text(stringResource(R.string.weight)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -260,14 +289,14 @@ private fun StartScreen(
         item {
             Row {
                 Checkbox(autoCount, { autoCount = it })
-                Text("Automatinis reisų skaičiavimas", modifier = Modifier.padding(top = 12.dp))
+                Text(stringResource(R.string.auto_count), modifier = Modifier.padding(top = 12.dp))
             }
         }
         item {
             OutlinedTextField(
                 radiusText,
                 { radiusText = it },
-                label = { Text("GPS zonos spindulys, m") },
+                label = { Text(stringResource(R.string.gps_radius)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -275,7 +304,7 @@ private fun StartScreen(
         item {
             Column {
                 OutlinedButton(onClick = { menuOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Tarifas: " + billingLabel(mode))
+                    Text(stringResource(R.string.rate, billingLabel(mode)))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     BillingMode.entries.forEach { value ->
@@ -294,7 +323,7 @@ private fun StartScreen(
             OutlinedTextField(
                 rateText,
                 { rateText = it },
-                label = { Text("Tarifo suma, EUR") },
+                label = { Text(stringResource(R.string.rate_amount)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -316,10 +345,10 @@ private fun StartScreen(
                 },
                 enabled = loading.isNotBlank() && unloading.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("PRADĖTI DARBĄ") }
+            ) { Text(stringResource(R.string.start_work)) }
         }
         item {
-            OutlinedButton(onClick = onHistory, modifier = Modifier.fillMaxWidth()) { Text("Istorija") }
+            OutlinedButton(onClick = onHistory, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.history)) }
         }
     }
 }
@@ -336,27 +365,27 @@ private fun WorkScreen(
 ) {
     val session = state.session ?: return
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text("Darbas vyksta", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.work_active), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(session.loadingPlace + " → " + session.unloadingPlace)
-        Text("Reisų: " + state.trips)
-        Text("GPS atstumas: " + "%.1f".format(state.distanceKm) + " km")
-        Text("Pervežta: " + "%.1f".format(state.totalTons) + " t")
-        Text("Pajamos: " + "%.2f".format(state.earnings) + " EUR")
+        Text(stringResource(R.string.trips_count, state.trips))
+        Text(stringResource(R.string.gps_distance, "%.1f".format(state.distanceKm)))
+        Text(stringResource(R.string.transported, "%.1f".format(state.totalTons)))
+        Text(stringResource(R.string.earnings, "%.2f".format(state.earnings)))
 
         if (session.autoCount && session.unloadingLat == null) {
             Button(onClick = onSetB, modifier = Modifier.fillMaxWidth()) {
-                Text("Nustatyti B čia ir įrašyti pirmą reisą")
+                Text(stringResource(R.string.set_b))
             }
         }
 
-        Button(onClick = onTrip, modifier = Modifier.fillMaxWidth()) { Text("Įrašyti reisą") }
-        OutlinedButton(onClick = onUndo, modifier = Modifier.fillMaxWidth()) { Text("Atšaukti paskutinį reisą") }
-        OutlinedButton(onClick = onMap, modifier = Modifier.fillMaxWidth()) { Text("Žemėlapis") }
-        OutlinedButton(onClick = onHistory, modifier = Modifier.fillMaxWidth()) { Text("Istorija") }
-        Button(onClick = onEnd, modifier = Modifier.fillMaxWidth()) { Text("BAIGTI DARBĄ") }
+        Button(onClick = onTrip, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.add_trip)) }
+        OutlinedButton(onClick = onUndo, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.undo_trip)) }
+        OutlinedButton(onClick = onMap, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.map)) }
+        OutlinedButton(onClick = onHistory, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.history)) }
+        Button(onClick = onEnd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.end_work)) }
     }
 }
 
@@ -368,8 +397,8 @@ private fun HistoryScreen(
 ) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Istorija", style = MaterialTheme.typography.headlineMedium)
-            TextButton(onClick = onBack) { Text("Atgal") }
+            Text(stringResource(R.string.history), style = MaterialTheme.typography.headlineMedium)
+            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(sessions, key = { it.id }) { session ->
@@ -402,25 +431,25 @@ private fun SummaryScreen(
     val data = summary
     if (data == null) {
         Column(Modifier.fillMaxSize().padding(16.dp)) {
-            Text("Kraunama...")
-            TextButton(onClick = onBack) { Text("Atgal") }
+            Text(stringResource(R.string.loading))
+            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
         }
         return
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Dienos suvestinė", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text("Data: " + data.session.date)
-        Text("Maršrutas: " + data.session.loadingPlace + " → " + data.session.unloadingPlace)
-        Text("Reisų: " + data.trips.size)
-        Text("Atstumas: " + "%.1f".format(data.totalDistanceKm) + " km")
-        Text("Pervežta: " + "%.1f".format(data.totalTons) + " t")
-        Text("Pajamos: " + "%.2f".format(data.earnings) + " EUR")
+        Text(stringResource(R.string.summary), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.date_value, data.session.date))
+        Text(stringResource(R.string.route_value, data.session.loadingPlace + " → " + data.session.unloadingPlace))
+        Text(stringResource(R.string.trips_count, data.trips.size))
+        Text(stringResource(R.string.distance, "%.1f".format(data.totalDistanceKm)))
+        Text(stringResource(R.string.transported, "%.1f".format(data.totalTons)))
+        Text(stringResource(R.string.earnings, "%.2f".format(data.earnings)))
 
-        Button(onClick = onMap, modifier = Modifier.fillMaxWidth()) { Text("Žemėlapis") }
+        Button(onClick = onMap, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.map)) }
 
         Button(
             onClick = {
@@ -442,14 +471,14 @@ private fun SummaryScreen(
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(Intent.createChooser(send, "Dalintis PDF"))
+                    context.startActivity(Intent.createChooser(send, context.getString(R.string.share_pdf)))
                 }
             },
             modifier = Modifier.fillMaxWidth()
-        ) { Text("Sukurti / dalintis PDF") }
+        ) { Text(stringResource(R.string.create_pdf)) }
 
-        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Atgal į istoriją") }
-        OutlinedButton(onClick = onHome, modifier = Modifier.fillMaxWidth()) { Text("Pradinis ekranas") }
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.back_history)) }
+        OutlinedButton(onClick = onHome, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home)) }
     }
 }
 
@@ -474,12 +503,12 @@ private fun SessionMapScreen(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Maršruto žemėlapis", fontWeight = FontWeight.Bold)
-            TextButton(onClick = onBack) { Text("Atgal") }
+            Text(stringResource(R.string.route_map), fontWeight = FontWeight.Bold)
+            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
         }
 
         if (points.isEmpty()) {
-            Text("Šiam darbui GPS taškų nėra.", modifier = Modifier.padding(16.dp))
+            Text(stringResource(R.string.no_gps), modifier = Modifier.padding(16.dp))
         } else {
             val mapView = remember(sessionId) {
                 MapView(context).apply {
@@ -513,14 +542,14 @@ private fun SessionMapScreen(
 
                         val startMarker = Marker(map).apply {
                             position = geoPoints.first()
-                            title = "Pradžia"
+                            title = context.getString(R.string.start)
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         }
                         map.overlays.add(startMarker)
 
                         val endMarker = Marker(map).apply {
                             position = geoPoints.last()
-                            title = "Pabaiga"
+                            title = context.getString(R.string.end)
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         }
                         map.overlays.add(endMarker)
@@ -567,12 +596,13 @@ private fun stopTracking(context: Context) {
     context.stopService(Intent(context, LocationTrackingService::class.java))
 }
 
+@Composable
 private fun billingLabel(mode: BillingMode): String =
     when (mode) {
-        BillingMode.PER_TRIP -> "EUR / reisas"
-        BillingMode.PER_TON -> "EUR / t"
-        BillingMode.PER_DAY -> "EUR / diena"
-        BillingMode.PER_TON_KM -> "EUR / t-km"
+        BillingMode.PER_TRIP -> stringResource(R.string.per_trip)
+        BillingMode.PER_TON -> stringResource(R.string.per_ton)
+        BillingMode.PER_DAY -> stringResource(R.string.per_day)
+        BillingMode.PER_TON_KM -> stringResource(R.string.per_ton_km)
     }
 
 private fun time(ms: Long): String =
