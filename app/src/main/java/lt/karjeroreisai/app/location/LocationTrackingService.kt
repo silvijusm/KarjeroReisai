@@ -263,8 +263,8 @@ class LocationTrackingService : Service() {
         private const val CHANNEL_ID = "karjero_reisai_tracking"
         private const val NOTIFICATION_ID = 1001
 
-        fun autoStateKey(sessionId: Long): String = "auto_state_\$sessionId"
+        fun autoStateKey(sessionId: Long): String = "auto_state_$sessionId"
 
-        fun tripStartKey(sessionId: Long): String = "trip_start_\$sessionId"
+        fun tripStartKey(sessionId: Long): String = "trip_start_$sessionId"
     }
 }
