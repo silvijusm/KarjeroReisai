@@ -28,3 +28,4 @@ jobs:
       - run: npm --prefix functions run check
       - run: npm --prefix functions test
       - run: python3 scripts/check-translations.py
+      - run: python3 scripts/check-app-config.py
