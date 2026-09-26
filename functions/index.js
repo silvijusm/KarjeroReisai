@@ -4,7 +4,6 @@ import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString, defineBoolean } from 'firebase-functions/params';
 import Stripe from 'stripe';
 import { createBillingService } from './billing.js';
-import { createMembersService } from './members.js';
 
 initializeApp();
 const stripeKey = defineSecret('STRIPE_SECRET_KEY');
@@ -48,22 +47,3 @@ export const stripeWebhook = onRequest({ ...options, secrets: [stripeKey, webhoo
   }
 });
 
-// Company membership: codes, join requests, approval, roles. No Stripe secrets needed.
-const memberOptions = { region: 'europe-west1', maxInstances: 5, timeoutSeconds: 30 };
-function memberCallable(method) {
-  return onCall(memberOptions, async request => {
-    try { return await createMembersService({ db: getFirestore() })[method](request.auth, request.data); }
-    catch (error) {
-      if (error instanceof HttpsError) throw error;
-      console.error('Membership operation failed', { method, code: typeof error.code === 'string' ? error.code : 'unknown' });
-      throw new HttpsError('internal', 'Please try again.');
-    }
-  });
-}
-export const companyCode = memberCallable('companyCode');
-export const joinCompany = memberCallable('joinCompany');
-export const cancelJoin = memberCallable('cancelJoin');
-export const approveMember = memberCallable('approveMember');
-export const rejectMember = memberCallable('rejectMember');
-export const removeMember = memberCallable('removeMember');
-export const setMemberRole = memberCallable('setMemberRole');

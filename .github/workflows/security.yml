@@ -27,5 +27,8 @@ jobs:
       - run: npm ci --prefix functions --ignore-scripts --no-audit --no-fund
       - run: npm --prefix functions run check
       - run: npm --prefix functions test
+      - run: npm ci --prefix members --ignore-scripts --no-audit --no-fund
+      - run: npm --prefix members run check
+      - run: npm --prefix members test
       - run: python3 scripts/check-translations.py
       - run: python3 scripts/check-app-config.py
