@@ -210,4 +210,15 @@
     <string name="change_role">Change role</string>
     <string name="qr_stickers">QR stickers for vehicles (PDF)</string>
     <string name="qr_stickers_hint">Print and stick on the windscreen – the excavator operator scans it.</string>
+    <string name="loader_mode_map">🗺 Map</string>
+    <string name="loader_mode_list">☰ List</string>
+    <string name="tap_to_load">Tap a truck plate – LOADED opens.</string>
+    <string name="map_legend">Green – at quarry, waiting · Blue – just loaded · Grey – on the road · Red – mismatch. Numbers: loads / trips.</string>
+    <string name="col_loaded">Loaded</string>
+    <string name="col_trips">Trips</string>
+    <string name="check_ok">✓ Matches</string>
+    <string name="check_in_transit">✓ On the way</string>
+    <string name="check_more_loads">⚠ More loads than trips</string>
+    <string name="check_more_trips">⚠ More trips than loads</string>
+    <string name="loads_vs_trips">Loaded %1$d · Trips %2$d</string>
 </resources>

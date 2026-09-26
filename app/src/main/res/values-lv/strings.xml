@@ -210,4 +210,15 @@
     <string name="change_role">Mainīt lomu</string>
     <string name="qr_stickers">QR uzlīmes automašīnām (PDF)</string>
     <string name="qr_stickers_hint">Izdrukājiet un uzlīmējiet uz priekšējā stikla.</string>
+    <string name="loader_mode_map">🗺 Karte</string>
+    <string name="loader_mode_list">☰ Saraksts</string>
+    <string name="tap_to_load">Pieskarieties numuram – atvērsies IEKRAUTS.</string>
+    <string name="map_legend">Zaļš – karjerā · Zils – tikko iekrauts · Pelēks – ceļā · Sarkans – neatbilst. Skaitļi: iekrauts / reisi.</string>
+    <string name="col_loaded">Iekrauts</string>
+    <string name="col_trips">Reisi</string>
+    <string name="check_ok">✓ Sakrīt</string>
+    <string name="check_in_transit">✓ Ceļā</string>
+    <string name="check_more_loads">⚠ Iekraušanu vairāk nekā reisu</string>
+    <string name="check_more_trips">⚠ Reisu vairāk nekā iekraušanu</string>
+    <string name="loads_vs_trips">Iekrauts %1$d · Reisi %2$d</string>
 </resources>

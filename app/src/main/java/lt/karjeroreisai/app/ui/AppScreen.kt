@@ -552,7 +552,7 @@ private fun WorkScreen(
 
         // Loads registered by the excavator operator on the contractor's object.
         if (session.objectId != null) {
-            DriverLoadsPanel(carrierId, session.contractorId, session.objectId, session.truck, session.startTime)
+            DriverLoadsPanel(carrierId, session.contractorId, session.objectId, session.truck, session.startTime, state.trips)
         }
 
         if (session.autoCount && session.unloadingLat == null) {
