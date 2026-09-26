@@ -153,4 +153,15 @@
     <string name="vehicle_active">Kasutusel</string>
     <string name="choose_vehicle">Vali sõiduk</string>
     <string name="vehicle_value">Sõiduk: %1$s</string>
+    <string name="dispatch_map">Kaart – kõik sõidukid</string>
+    <string name="state_moving">Sõidab</string>
+    <string name="state_stopped">Seisab</string>
+    <string name="state_inactive">Signaal puudub</string>
+    <string name="state_offline">Lõpetas töö</string>
+    <string name="trip_number">Reis %1$d</string>
+    <string name="close">Sulge</string>
+    <string name="today_summary">Täna: %1$d reisi, %2$s t, %3$s km</string>
+    <string name="no_live_vehicles">Keegi ei tööta veel. Sõidukid ilmuvad, kui juhid alustavad tööd.</string>
+    <string name="trips_short">%1$d reisi</string>
+    <string name="minutes_ago">%1$d min tagasi</string>
 </resources>

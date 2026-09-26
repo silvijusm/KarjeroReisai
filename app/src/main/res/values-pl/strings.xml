@@ -153,4 +153,15 @@
     <string name="vehicle_active">W użyciu</string>
     <string name="choose_vehicle">Wybierz pojazd</string>
     <string name="vehicle_value">Pojazd: %1$s</string>
+    <string name="dispatch_map">Mapa – wszystkie pojazdy</string>
+    <string name="state_moving">Jedzie</string>
+    <string name="state_stopped">Stoi</string>
+    <string name="state_inactive">Brak sygnału</string>
+    <string name="state_offline">Zakończył pracę</string>
+    <string name="trip_number">Kurs %1$d</string>
+    <string name="close">Zamknij</string>
+    <string name="today_summary">Dziś: %1$d kursów, %2$s t, %3$s km</string>
+    <string name="no_live_vehicles">Nikt jeszcze nie pracuje. Pojazdy pojawią się, gdy kierowcy rozpoczną pracę.</string>
+    <string name="trips_short">%1$d kurs.</string>
+    <string name="minutes_ago">%1$d min temu</string>
 </resources>

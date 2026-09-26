@@ -23,7 +23,17 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run test:rules
+      - name: Firestore rules tests
+        run: |
+          set +e
+          npm run test:rules 2>&1 | tee "$RUNNER_TEMP/rules.log"
+          code=${PIPESTATUS[0]}
+          if [ "$code" != "0" ]; then
+            # Failing test names and first error lines as one annotation (readable without raw logs).
+            msg=$(grep -E -A12 '^not ok' "$RUNNER_TEMP/rules.log" | head -n 80 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Rules tests failed::$msg"
+          fi
+          exit "$code"
       - run: npm ci --prefix functions --ignore-scripts --no-audit --no-fund
       - run: npm --prefix functions run check
       - run: npm --prefix functions test

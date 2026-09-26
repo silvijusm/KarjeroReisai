@@ -210,3 +210,75 @@ test('members cannot change their own profile role or company', async () => {
   await assertFails(updateDoc(doc(db('jonas'), 'users', 'jonas'), { companyId: 'b' }));
   await assertSucceeds(updateDoc(doc(db('jonas'), 'users', 'jonas'), { name: 'Jonas J.' }));
 });
+
+// ---- 3 etapas: sesijos, maršrutas, gyva vieta ----
+const session = (uid, patch = {}) => ({ driverUid: uid, driverName: uid, plate: 'ABC123', trailer: '', loadingPlace: 'A', unloadingPlace: 'B',
+  date: '2026-09-26', startedAtMillis: 1000, endedAtMillis: null, tripsCount: 1, tonnes: 26, km: 7,
+  trips: [{ n: 1, atMillis: 2000, weightT: 26 }], updatedAtMillis: 3000, ...patch });
+const live = (patch = {}) => ({ lat: 55.7, lng: 24.3, speedKmh: 40, heading: 0, accuracyM: 5, updatedAtMillis: 3000, sessionId: 's1',
+  plate: 'ABC123', driverName: 'jonas', state: 'moving', tripsCount: 1, tonnes: 26, startedAtMillis: 1000, ...patch });
+const route = uid => ({ driverUid: uid, lat: [55.1, 55.2], lng: [24.1, 24.2], t: [1, 2], firstMillis: 1 });
+
+test('active driver writes own session, route and live position', async () => {
+  await team();
+  const c = db('jonas');
+  await assertSucceeds(setDoc(doc(c, 'companies/a/sessions/s1'), session('jonas')));
+  await assertSucceeds(setDoc(doc(c, 'companies/a/sessions/s1/route/1'), route('jonas')));
+  await assertSucceeds(setDoc(doc(c, 'companies/a/liveLocations/jonas'), live()));
+  await assertSucceeds(setDoc(doc(c, 'companies/a/liveLocations/jonas'), { state: 'offline', updatedAtMillis: 4000 }, { merge: true }));
+  await assertSucceeds(getDoc(doc(c, 'companies/a/sessions/s1')));
+});
+test('owner can also record own work', async () => {
+  await team();
+  await assertSucceeds(setDoc(doc(db('alice'), 'companies/a/sessions/o1'), session('alice')));
+  await assertSucceeds(setDoc(doc(db('alice'), 'companies/a/liveLocations/alice'), live()));
+});
+test('driver cannot write as another driver or overwrite their session', async () => {
+  await team();
+  await seed('companies/a/sessions/p1', session('petras'));
+  await assertFails(setDoc(doc(db('jonas'), 'companies/a/sessions/x'), session('petras')));
+  await assertFails(setDoc(doc(db('jonas'), 'companies/a/sessions/p1'), session('jonas')));
+  await assertFails(setDoc(doc(db('jonas'), 'companies/a/liveLocations/petras'), live()));
+  await assertFails(setDoc(doc(db('jonas'), 'companies/a/sessions/p1/route/1'), route('jonas')));
+});
+test('driver cannot read other drivers sessions, routes or the live map', async () => {
+  await team();
+  await seed('companies/a/sessions/p1', session('petras'));
+  await seed('companies/a/sessions/p1/route/1', route('petras'));
+  await seed('companies/a/liveLocations/petras', live());
+  await assertFails(getDoc(doc(db('jonas'), 'companies/a/sessions/p1')));
+  await assertFails(getDoc(doc(db('jonas'), 'companies/a/sessions/p1/route/1')));
+  await assertFails(getDocs(collection(db('jonas'), 'companies/a/liveLocations')));
+  await assertFails(getDocs(collection(db('jonas'), 'companies/a/sessions')));
+});
+test('owner and dispatcher see the live map and all sessions; other company does not', async () => {
+  await team(); await register('bob', 'b');
+  await seed('companies/a/sessions/p1', session('petras'));
+  await seed('companies/a/sessions/p1/route/1', route('petras'));
+  await seed('companies/a/liveLocations/petras', live());
+  for (const uid of ['alice', 'disp']) {
+    await assertSucceeds(getDocs(collection(db(uid), 'companies/a/liveLocations')));
+    await assertSucceeds(getDocs(collection(db(uid), 'companies/a/sessions')));
+    await assertSucceeds(getDocs(collection(db(uid), 'companies/a/sessions/p1/route')));
+  }
+  await assertFails(getDocs(collection(db('bob'), 'companies/a/liveLocations')));
+  await assertFails(getDocs(collection(db('bob'), 'companies/a/sessions')));
+});
+test('pending or removed drivers cannot record work; old sessions remain readable to the owner', async () => {
+  await team();
+  await seed('companies/a/sessions/b1', session('buves'));
+  for (const uid of ['naujas', 'buves']) {
+    await assertFails(setDoc(doc(db(uid), `companies/a/sessions/${uid}2`), session(uid)));
+    await assertFails(setDoc(doc(db(uid), `companies/a/liveLocations/${uid}`), live()));
+  }
+  await assertSucceeds(getDoc(doc(db('alice'), 'companies/a/sessions/b1')));
+});
+test('invalid session, route and live data are rejected', async () => {
+  await team();
+  const c = db('jonas');
+  await assertFails(setDoc(doc(c, 'companies/a/sessions/s2'), session('jonas', { admin: true })));
+  await assertFails(setDoc(doc(c, 'companies/a/sessions/s2'), session('jonas', { startedAtMillis: 'x' })));
+  await assertFails(setDoc(doc(c, 'companies/a/sessions/s2/route/1'), { ...route('jonas'), lng: [1] }));
+  await assertFails(setDoc(doc(c, 'companies/a/liveLocations/jonas'), live({ state: 'flying' })));
+  await assertFails(deleteDoc(doc(c, 'companies/a/liveLocations/jonas')));
+});

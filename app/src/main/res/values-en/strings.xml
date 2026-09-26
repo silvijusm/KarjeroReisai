@@ -153,4 +153,15 @@
     <string name="vehicle_active">In use</string>
     <string name="choose_vehicle">Choose vehicle</string>
     <string name="vehicle_value">Vehicle: %1$s</string>
+    <string name="dispatch_map">Map – all vehicles</string>
+    <string name="state_moving">Moving</string>
+    <string name="state_stopped">Stopped</string>
+    <string name="state_inactive">No signal</string>
+    <string name="state_offline">Finished</string>
+    <string name="trip_number">Trip %1$d</string>
+    <string name="close">Close</string>
+    <string name="today_summary">Today: %1$d trips, %2$s t, %3$s km</string>
+    <string name="no_live_vehicles">Nobody is working yet. Vehicles appear when drivers start work.</string>
+    <string name="trips_short">%1$d trips</string>
+    <string name="minutes_ago">%1$d min ago</string>
 </resources>

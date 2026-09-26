@@ -33,7 +33,11 @@ data class WorkSession(
     val zoneRadiusM: Double,
     val autoCount: Boolean,
     val billingMode: BillingMode,
-    val rate: Double
+    val rate: Double,
+    /** Firestore document id (null for sessions started before cloud sync or without a company). */
+    val cloudId: String? = null,
+    val companyId: String? = null,
+    val driverUid: String? = null
 )
 
 data class Trip(
@@ -61,7 +65,7 @@ data class GpsPoint(
 )
 
 class AppDatabase(context: Context) :
-    SQLiteOpenHelper(context, "karjero_reisai.db", null, 3) {
+    SQLiteOpenHelper(context, "karjero_reisai.db", null, 4) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -83,7 +87,10 @@ class AppDatabase(context: Context) :
                 zone_radius_m REAL NOT NULL DEFAULT 150,
                 auto_count INTEGER NOT NULL DEFAULT 0,
                 billing_mode TEXT NOT NULL DEFAULT 'PER_TRIP',
-                rate REAL NOT NULL DEFAULT 0
+                rate REAL NOT NULL DEFAULT 0,
+                cloud_id TEXT,
+                company_id TEXT,
+                driver_uid TEXT
             )
             """.trimIndent()
         )
@@ -117,6 +124,7 @@ class AppDatabase(context: Context) :
                 longitude REAL NOT NULL,
                 accuracy REAL NOT NULL DEFAULT 0,
                 speed REAL NOT NULL DEFAULT 0,
+                uploaded INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY(session_id) REFERENCES work_sessions(id)
             )
             """.trimIndent()
@@ -145,6 +153,12 @@ class AppDatabase(context: Context) :
             db.execSQL("ALTER TABLE trips ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0")
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_gps_session_time ON gps_points(session_id, timestamp)")
         }
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE work_sessions ADD COLUMN cloud_id TEXT")
+            db.execSQL("ALTER TABLE work_sessions ADD COLUMN company_id TEXT")
+            db.execSQL("ALTER TABLE work_sessions ADD COLUMN driver_uid TEXT")
+            db.execSQL("ALTER TABLE gps_points ADD COLUMN uploaded INTEGER NOT NULL DEFAULT 0")
+        }
     }
 
     fun startSession(
@@ -156,7 +170,10 @@ class AppDatabase(context: Context) :
         autoCount: Boolean,
         zoneRadiusM: Double,
         billingMode: BillingMode,
-        rate: Double
+        rate: Double,
+        cloudId: String? = null,
+        companyId: String? = null,
+        driverUid: String? = null
     ): Long {
         val now = System.currentTimeMillis()
         val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(now))
@@ -177,6 +194,9 @@ class AppDatabase(context: Context) :
             put("auto_count", if (autoCount) 1 else 0)
             put("billing_mode", billingMode.name)
             put("rate", rate.coerceAtLeast(0.0))
+            if (cloudId != null) put("cloud_id", cloudId) else putNull("cloud_id")
+            if (companyId != null) put("company_id", companyId) else putNull("company_id")
+            if (driverUid != null) put("driver_uid", driverUid) else putNull("driver_uid")
         }
         return writableDatabase.insertOrThrow("work_sessions", null, values)
     }
@@ -352,6 +372,33 @@ class AppDatabase(context: Context) :
         return out
     }
 
+    /** Accurate GPS points not yet sent to the cloud (oldest first). */
+    fun getPendingGpsPoints(sessionId: Long, limit: Int): List<GpsPoint> {
+        val out = mutableListOf<GpsPoint>()
+        readableDatabase.rawQuery(
+            "SELECT * FROM gps_points WHERE session_id=? AND uploaded=0 ORDER BY id ASC LIMIT ?",
+            arrayOf(sessionId.toString(), limit.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                out += GpsPoint(
+                    id = c.getLong(c.getColumnIndexOrThrow("id")),
+                    sessionId = c.getLong(c.getColumnIndexOrThrow("session_id")),
+                    timestamp = c.getLong(c.getColumnIndexOrThrow("timestamp")),
+                    latitude = c.getDouble(c.getColumnIndexOrThrow("latitude")),
+                    longitude = c.getDouble(c.getColumnIndexOrThrow("longitude")),
+                    accuracy = c.getFloat(c.getColumnIndexOrThrow("accuracy")),
+                    speed = c.getFloat(c.getColumnIndexOrThrow("speed"))
+                )
+            }
+        }
+        return out
+    }
+
+    fun markGpsUploaded(sessionId: Long, upToId: Long) {
+        val values = ContentValues().apply { put("uploaded", 1) }
+        writableDatabase.update("gps_points", values, "session_id=? AND id<=?", arrayOf(sessionId.toString(), upToId.toString()))
+    }
+
     fun routeDistanceKm(sessionId: Long, fromTimestamp: Long, toTimestamp: Long): Double {
         val points = mutableListOf<GpsPoint>()
         readableDatabase.rawQuery(
@@ -440,7 +487,10 @@ class AppDatabase(context: Context) :
             billingMode = runCatching {
                 BillingMode.valueOf(c.getString(c.getColumnIndexOrThrow("billing_mode")))
             }.getOrDefault(BillingMode.PER_TRIP),
-            rate = c.getDouble(c.getColumnIndexOrThrow("rate"))
+            rate = c.getDouble(c.getColumnIndexOrThrow("rate")),
+            cloudId = c.getString(c.getColumnIndexOrThrow("cloud_id")),
+            companyId = c.getString(c.getColumnIndexOrThrow("company_id")),
+            driverUid = c.getString(c.getColumnIndexOrThrow("driver_uid"))
         )
 
     private fun android.database.Cursor.nullableDouble(name: String): Double? {

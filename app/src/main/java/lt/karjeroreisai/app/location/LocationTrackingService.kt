@@ -20,13 +20,17 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import lt.karjeroreisai.app.cloud.CloudSync
 import lt.karjeroreisai.app.data.AppDatabase
+import java.util.concurrent.Executors
 
 class LocationTrackingService : Service() {
 
     private lateinit var db: AppDatabase
     private val fused by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private var sessionId: Long = -1L
+    private val io = Executors.newSingleThreadExecutor()
+    private var lastRouteSync = 0L
 
     enum class AutoState { WAITING_FOR_A, ARMED_TO_B }
 
@@ -48,6 +52,16 @@ class LocationTrackingService : Service() {
 
             saveLatestLocation(location)
             processAutoCounting(location, now)
+
+            // Cloud: live position (throttled inside) and the route every 5 minutes.
+            val id = sessionId
+            io.execute {
+                runCatching { CloudSync.maybeSendLive(applicationContext, db, id, location) }
+                if (System.currentTimeMillis() - lastRouteSync >= CloudSync.ROUTE_SYNC_INTERVAL_MS) {
+                    lastRouteSync = System.currentTimeMillis()
+                    runCatching { CloudSync.syncSession(applicationContext, db, id) }
+                }
+            }
         }
     }
 
@@ -187,6 +201,9 @@ class LocationTrackingService : Service() {
                         preventDuplicateWithinMs = 60_000L
                     )
 
+                    val id = sessionId
+                    io.execute { runCatching { CloudSync.syncSession(applicationContext, db, id) } }
+
                     // Persijungiame į laukimo būseną net jei DB atmetė dublį.
                     // Taip tame pačiame B taške po minutės nebus įrašytas antras reisas.
                     saveAutoState(AutoState.WAITING_FOR_A)
@@ -247,6 +264,8 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         fused.removeLocationUpdates(callback)
+        io.shutdown()
+        runCatching { io.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS) }
         if (::db.isInitialized) db.close()
         super.onDestroy()
     }
