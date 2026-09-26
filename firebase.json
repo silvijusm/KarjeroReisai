@@ -43,5 +43,24 @@
         "npm --prefix \"$RESOURCE_DIR\" test"
       ]
     }
-  ]
+  ],
+  "hosting": {
+    "public": "web",
+    "ignore": [
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|html)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ],
+    "cleanUrls": true
+  }
 }

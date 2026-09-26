@@ -148,7 +148,9 @@ service cloud.firestore {
         && resource.data.driverUid == request.auth.uid;
       match /route/{chunkId} {
         allow read: if signedIn() && (resource.data.driverUid == request.auth.uid || isManager(companyId));
-        allow create: if canWork(companyId) && validRoute(request.resource.data);
+        // Route points may only be added to the driver's own session.
+        allow create: if canWork(companyId) && validRoute(request.resource.data)
+          && get(/databases/$(database)/documents/companies/$(companyId)/sessions/$(sessionId)).data.driverUid == request.auth.uid;
         allow update: if canWork(companyId) && validRoute(request.resource.data)
           && resource.data.driverUid == request.auth.uid;
       }

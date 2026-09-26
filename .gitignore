@@ -23,3 +23,6 @@ keystore.properties
 # Local function configuration and dependencies
 functions/node_modules/
 functions/.env*
+
+# Generated at deploy time
+web/config.js

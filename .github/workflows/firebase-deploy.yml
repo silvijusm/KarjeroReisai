@@ -1,4 +1,4 @@
-name: Deploy Firebase (rules + member functions)
+name: Deploy Firebase (rules, functions, web dispatcher)
 
 # Manual only: GitHub → Actions → "Deploy Firebase" → Run workflow.
 # Needs repository secret FIREBASE_SERVICE_ACCOUNT (service account JSON key).
@@ -43,7 +43,7 @@ jobs:
           chmod 600 "$KEYFILE"
           export GOOGLE_APPLICATION_CREDENTIALS="$KEYFILE"
           set +e
-          npm run deploy:members -- --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          bash scripts/deploy-firebase.sh 2>&1 | tee "$RUNNER_TEMP/deploy.log"
           code=${PIPESTATUS[0]}
           rm -f "$KEYFILE"
           if [ "$code" != "0" ]; then
