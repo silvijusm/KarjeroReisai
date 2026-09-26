@@ -96,6 +96,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         zoneRadiusM: Double,
         billingMode: BillingMode,
         rate: Double,
+        objectId: String? = null,
+        contractorId: String? = null,
         onStarted: (Long) -> Unit
     ) {
         if (loading.isBlank() || unloading.isBlank()) return
@@ -108,6 +110,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     cloudId = if (cloud != null) java.util.UUID.randomUUID().toString() else null,
                     companyId = cloud?.companyId,
                     driverUid = cloud?.uid,
+                    objectId = if (cloud != null) objectId else null,
+                    contractorId = if (cloud != null) contractorId else null,
                     loadingPlace = loading,
                     unloadingPlace = unloading,
                     truck = truck,
@@ -229,7 +233,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 db.endSession(session.id)
                 runCatching {
                     CloudSync.syncSession(getApplication(), db, session.id)
-                    CloudSync.markOffline(getApplication())
+                    CloudSync.markOffline(getApplication(), db.getSession(session.id))
                 }
             }
             _lastEndedId.value = session.id

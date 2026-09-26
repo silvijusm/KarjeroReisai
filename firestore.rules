@@ -207,7 +207,7 @@ service cloud.firestore {
         && request.resource.data.get('joinCode', null) == resource.data.get('joinCode', null);
 
       match /carriers/{carrierId} {
-        allow read: if isManager(companyId) || (carrierId == myCompany() && canWork(carrierId));
+        allow read: if isManager(companyId) || isActiveLoader(companyId) || (carrierId == myCompany() && canWork(carrierId));
       }
       match /live/{uid} {
         allow read: if isManager(companyId) || isActiveLoader(companyId);

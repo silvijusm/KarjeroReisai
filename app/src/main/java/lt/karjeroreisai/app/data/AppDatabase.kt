@@ -37,7 +37,10 @@ data class WorkSession(
     /** Firestore document id (null for sessions started before cloud sync or without a company). */
     val cloudId: String? = null,
     val companyId: String? = null,
-    val driverUid: String? = null
+    val driverUid: String? = null,
+    /** Contractor object (road / site) this work belongs to, if any. */
+    val objectId: String? = null,
+    val contractorId: String? = null
 )
 
 data class Trip(
@@ -65,7 +68,7 @@ data class GpsPoint(
 )
 
 class AppDatabase(context: Context) :
-    SQLiteOpenHelper(context, "karjero_reisai.db", null, 4) {
+    SQLiteOpenHelper(context, "karjero_reisai.db", null, 5) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -90,7 +93,9 @@ class AppDatabase(context: Context) :
                 rate REAL NOT NULL DEFAULT 0,
                 cloud_id TEXT,
                 company_id TEXT,
-                driver_uid TEXT
+                driver_uid TEXT,
+                object_id TEXT,
+                contractor_id TEXT
             )
             """.trimIndent()
         )
@@ -159,6 +164,10 @@ class AppDatabase(context: Context) :
             db.execSQL("ALTER TABLE work_sessions ADD COLUMN driver_uid TEXT")
             db.execSQL("ALTER TABLE gps_points ADD COLUMN uploaded INTEGER NOT NULL DEFAULT 0")
         }
+        if (oldVersion < 5) {
+            db.execSQL("ALTER TABLE work_sessions ADD COLUMN object_id TEXT")
+            db.execSQL("ALTER TABLE work_sessions ADD COLUMN contractor_id TEXT")
+        }
     }
 
     fun startSession(
@@ -173,7 +182,9 @@ class AppDatabase(context: Context) :
         rate: Double,
         cloudId: String? = null,
         companyId: String? = null,
-        driverUid: String? = null
+        driverUid: String? = null,
+        objectId: String? = null,
+        contractorId: String? = null
     ): Long {
         val now = System.currentTimeMillis()
         val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(now))
@@ -197,6 +208,8 @@ class AppDatabase(context: Context) :
             if (cloudId != null) put("cloud_id", cloudId) else putNull("cloud_id")
             if (companyId != null) put("company_id", companyId) else putNull("company_id")
             if (driverUid != null) put("driver_uid", driverUid) else putNull("driver_uid")
+            if (objectId != null) put("object_id", objectId) else putNull("object_id")
+            if (contractorId != null) put("contractor_id", contractorId) else putNull("contractor_id")
         }
         return writableDatabase.insertOrThrow("work_sessions", null, values)
     }
@@ -490,7 +503,9 @@ class AppDatabase(context: Context) :
             rate = c.getDouble(c.getColumnIndexOrThrow("rate")),
             cloudId = c.getString(c.getColumnIndexOrThrow("cloud_id")),
             companyId = c.getString(c.getColumnIndexOrThrow("company_id")),
-            driverUid = c.getString(c.getColumnIndexOrThrow("driver_uid"))
+            driverUid = c.getString(c.getColumnIndexOrThrow("driver_uid")),
+            objectId = c.getString(c.getColumnIndexOrThrow("object_id")),
+            contractorId = c.getString(c.getColumnIndexOrThrow("contractor_id"))
         )
 
     private fun android.database.Cursor.nullableDouble(name: String): Double? {

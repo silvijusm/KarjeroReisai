@@ -31,7 +31,7 @@ data class AuthUiState(
     val memberStatus: String? = null,
     val companyName: String = ""
 ) {
-    val isMember: Boolean get() = role == "driver" || role == "dispatcher"
+    val isMember: Boolean get() = role == "driver" || role == "dispatcher" || role == "loader"
     val isCompanyAdmin: Boolean get() = role == "company_admin" || role == "super_admin"
     val isManager: Boolean get() = isCompanyAdmin || (role == "dispatcher" && memberStatus == "active")
 }
@@ -293,7 +293,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 val role = document.getString("role")
                 val companyId = document.getString("companyId")
                 val validProfile = when (role) {
-                    "company_admin", "driver", "dispatcher" -> !companyId.isNullOrBlank()
+                    "company_admin", "driver", "dispatcher", "loader" -> !companyId.isNullOrBlank()
                     "super_admin" -> true
                     else -> false
                 }
@@ -312,7 +312,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     role = role,
                     error = pendingError
                 )
-                if (role == "driver" || role == "dispatcher") listenMembership(user, companyId!!)
+                if (role == "driver" || role == "dispatcher" || role == "loader") listenMembership(user, companyId!!)
             }
             .addOnFailureListener {
                 if (auth.currentUser?.uid != user.uid) return@addOnFailureListener

@@ -86,7 +86,9 @@ object CloudSync {
                         "source" to it.source
                     )
                 },
-                "updatedAtMillis" to System.currentTimeMillis()
+                "updatedAtMillis" to System.currentTimeMillis(),
+                "objectId" to session.objectId,
+                "contractorId" to session.contractorId
             )
         )
         // Route in batches. The document id is the first point id, so a repeated
@@ -137,8 +139,7 @@ object CloudSync {
         lastLiveAt = now
         lastLiveLat = location.latitude
         lastLiveLng = location.longitude
-        company(config.companyId).collection("liveLocations").document(config.uid).set(
-            mapOf(
+        val live = mapOf(
                 "lat" to location.latitude,
                 "lng" to location.longitude,
                 "speedKmh" to (if (location.hasSpeed()) location.speed * 3.6 else 0.0),
@@ -153,14 +154,25 @@ object CloudSync {
                 "tonnes" to trips.sumOf { it.weight },
                 "startedAtMillis" to session.startTime
             )
-        )
+        company(config.companyId).collection("liveLocations").document(config.uid).set(live)
+        // Working on a contractor's object: the contractor (and the excavator operator)
+        // see this vehicle there – only while this session lasts.
+        if (session.objectId != null && session.contractorId != null) {
+            company(session.contractorId).collection("objects").document(session.objectId)
+                .collection("live").document(config.uid)
+                .set(live + mapOf("carrierId" to config.companyId, "objectId" to session.objectId))
+        }
     }
 
-    /** Work finished: the vehicle disappears from the "active" list. */
-    fun markOffline(context: Context) {
+    /** Work finished: the vehicle disappears from the "active" list (also on the contractor's object). */
+    fun markOffline(context: Context, session: WorkSession? = null) {
         val config = config(context) ?: return
         lastLiveAt = 0L
-        company(config.companyId).collection("liveLocations").document(config.uid)
-            .set(mapOf("state" to "offline", "updatedAtMillis" to System.currentTimeMillis()), SetOptions.merge())
+        val offline = mapOf("state" to "offline", "updatedAtMillis" to System.currentTimeMillis())
+        company(config.companyId).collection("liveLocations").document(config.uid).set(offline, SetOptions.merge())
+        if (session?.objectId != null && session.contractorId != null) {
+            company(session.contractorId).collection("objects").document(session.objectId)
+                .collection("live").document(config.uid).set(offline + mapOf("carrierId" to config.companyId), SetOptions.merge())
+        }
     }
 }

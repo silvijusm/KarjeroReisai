@@ -71,7 +71,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class Screen { HOME, HISTORY, MAP, SUMMARY, TEAM, VEHICLES, DISPATCH }
+private enum class Screen { HOME, HISTORY, MAP, SUMMARY, TEAM, VEHICLES, DISPATCH, OBJECTS }
 
 @Composable
 fun KarjeroReisaiApp(
@@ -131,6 +131,8 @@ fun KarjeroReisaiApp(
             authState.name.ifBlank { authState.email }, cloudEnabled
         )
     }
+    val objectLinks = rememberObjectLinks(authState.companyId, cloudEnabled)
+    var selectedObject by remember(authState.companyId) { mutableStateOf<ObjectLink?>(null) }
     val liveVehicles = rememberLiveVehicles(authState.companyId, authState.signedIn && authState.isManager)
 
     // Company data for managers (members) and for everyone in the company (vehicles).
@@ -214,6 +216,10 @@ fun KarjeroReisaiApp(
                     }
                 }
 
+                authState.role == "loader" && authState.memberStatus == "active" -> {
+                    LoaderScreen(authState, onSettings = { settingsOpen = true })
+                }
+
                 authState.isMember && authState.memberStatus == "pending" -> {
                     PendingApprovalScreen(
                         state = authState,
@@ -243,6 +249,10 @@ fun KarjeroReisaiApp(
                                 pendingCount = members.count { it.status == "pending" },
                                 onTeam = { screen = Screen.TEAM },
                                 onDispatch = { screen = Screen.DISPATCH },
+                                onObjects = { screen = Screen.OBJECTS },
+                                objectLinks = objectLinks,
+                                selectedObject = selectedObject,
+                                onSelectObject = { selectedObject = it },
                                 onVehicles = { screen = Screen.VEHICLES },
                                 canStartWork = canStartWork,
                                 entitlementLoading = entitlementLoading,
@@ -259,7 +269,9 @@ fun KarjeroReisaiApp(
                                             autoCount,
                                             radius,
                                             mode,
-                                            rate
+                                            rate,
+                                            objectId = selectedObject?.objectId,
+                                            contractorId = selectedObject?.contractorId
                                         ) { id -> startTracking(context, id) }
                                     }
 
@@ -277,6 +289,7 @@ fun KarjeroReisaiApp(
                         } else {
                             WorkScreen(
                                 state = dashboard,
+                                carrierId = authState.companyId,
                                 onTrip = viewModel::addTripManual,
                                 onSetB = viewModel::setUnloadingZoneHereAndCountFirstTrip,
                                 onUndo = viewModel::undoLastTrip,
@@ -297,6 +310,8 @@ fun KarjeroReisaiApp(
                                 }
                             )
                         }
+
+                        Screen.OBJECTS -> ObjectsScreen(authState, objectLinks, onBack = { screen = Screen.HOME })
 
                         Screen.DISPATCH -> DispatchScreen(authState, liveVehicles, onBack = { screen = Screen.HOME })
 
@@ -347,6 +362,10 @@ private fun StartScreen(
     pendingCount: Int,
     onTeam: () -> Unit,
     onDispatch: () -> Unit,
+    onObjects: () -> Unit,
+    objectLinks: List<ObjectLink>,
+    selectedObject: ObjectLink?,
+    onSelectObject: (ObjectLink?) -> Unit,
     onVehicles: () -> Unit,
     canStartWork: Boolean,
     entitlementLoading: Boolean,
@@ -388,6 +407,20 @@ private fun StartScreen(
                         Text(if (pendingCount > 0) stringResource(R.string.team_pending, pendingCount) else stringResource(R.string.team))
                     }
                     OutlinedButton(onClick = onVehicles, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.vehicles)) }
+                }
+            }
+            item { OutlinedButton(onClick = onObjects, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.objects)) } }
+        }
+        if (objectLinks.any { it.status == "active" }) {
+            item {
+                ObjectPicker(objectLinks, selectedObject) { link, info ->
+                    onSelectObject(link)
+                    if (info != null) {
+                        if (info.quarryName.isNotBlank()) loading = info.quarryName
+                        if (info.unloadName.isNotBlank()) unloading = info.unloadName
+                        info.materials.firstOrNull()?.tonnesPerTrip?.takeIf { it > 0 }?.let { weightText = it.toString() }
+                        info.vehicleTonnes[truck.uppercase()]?.let { weightText = it.toString() }
+                    }
                 }
             }
         }
@@ -497,6 +530,7 @@ private fun StartScreen(
 @Composable
 private fun WorkScreen(
     state: DashboardState,
+    carrierId: String?,
     onTrip: () -> Unit,
     onSetB: () -> Unit,
     onUndo: () -> Unit,
@@ -515,6 +549,11 @@ private fun WorkScreen(
         Text(stringResource(R.string.gps_distance, "%.1f".format(state.distanceKm)))
         Text(stringResource(R.string.transported, "%.1f".format(state.totalTons)))
         Text(stringResource(R.string.earnings, "%.2f".format(state.earnings)))
+
+        // Loads registered by the excavator operator on the contractor's object.
+        if (session.objectId != null) {
+            DriverLoadsPanel(carrierId, session.contractorId, session.objectId, session.truck, session.startTime)
+        }
 
         if (session.autoCount && session.unloadingLat == null) {
             Button(onClick = onSetB, modifier = Modifier.fillMaxWidth()) {
