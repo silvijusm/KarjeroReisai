@@ -10,6 +10,8 @@ import { firebaseConfig } from './config.js';
 import { t, lang, setLang, LANGS } from './i18n.js';
 import { pageObjects } from './objects.js';
 import { invoiceList } from './invoices.js';
+import { fillRoads } from './roadfill.js';
+const HELP_URL = 'https://silvijusm.github.io/KarjeroReisai/pagalba.html';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -81,6 +83,7 @@ function renderLogin(message) {
       if (!email.value.trim()) { msg.textContent = t('enterEmail'); return; }
       try { await sendPasswordResetEmail(auth, email.value.trim()); msg.textContent = t('resetSent'); } catch { msg.textContent = t('resetSent'); }
     } }, t('forgot')),
+    h('a', { href: HELP_URL, target: '_blank', rel: 'noopener', style: 'text-align:center' }, '❓ ' + t('help')),
     langSelect()));
 }
 
@@ -127,6 +130,7 @@ function render() {
       h('div', { class: 'muted', style: 'color:#aab4bd' }, state.company?.name || ''),
       nav, h('div', { class: 'spacer' }),
       h('div', { style: 'color:#cfd6dc' }, `${state.profile.name || state.user.email} · ${t('role_' + state.role)}`),
+      h('a', { class: 'help', href: HELP_URL, target: '_blank', rel: 'noopener' }, '❓ ' + t('help')),
       langSelect(),
       h('button', { class: 'out', onclick: () => signOut(auth) }, t('signOut'))),
     main));
@@ -227,12 +231,14 @@ async function loadDay(uid, dateStr) {
     if (line.length) lines.push(line);
   }
   trips.sort((a, b) => a.atMillis - b.atMillis);
-  return { sessions, lines, trips, tonnes, km };
+  const { solid, estimated } = await fillRoads(lines);
+  return { sessions, lines: solid, estimated, trips, tonnes, km };
 }
 function drawRoute(layer, day) {
   layer.clearLayers();
   const all = [];
   day.lines.forEach(line => { L.polyline(line, { color: '#1565c0', weight: 5, opacity: .8 }).addTo(layer); all.push(...line); });
+  (day.estimated || []).forEach(line => { L.polyline(line, { color: '#1565c0', weight: 4, opacity: .7, dashArray: '8 8' }).bindTooltip(t('mapEstimated')).addTo(layer); all.push(...line); });
   day.trips.forEach((tr, i) => {
     if (tr.lat == null) return;
     L.marker([tr.lat, tr.lng], { icon: L.divIcon({ className: '', html: `<div class="tripdot">${i + 1}</div>`, iconSize: null }) })

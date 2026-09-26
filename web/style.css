@@ -55,3 +55,4 @@ tfoot td{font-weight:700}
 .pill{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;background:#eef1f4}
 @media (max-width:860px){.mapwrap{grid-template-columns:1fr;grid-template-rows:55% 45%}.side{border-left:0;border-top:1px solid var(--line)}.hgrid{grid-template-columns:1fr}}
 @media print{header,.noprint{display:none!important}.page{max-width:none}.card{box-shadow:none;padding:0}body{background:#fff}}
+header a.help{color:#fff;text-decoration:none;background:#2c343b;border:1px solid #3a434b;border-radius:8px;padding:8px 12px}

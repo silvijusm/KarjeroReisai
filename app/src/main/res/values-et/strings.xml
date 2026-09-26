@@ -244,4 +244,8 @@
     <string name="privacy_accept">Olen tutvunud</string>
     <string name="my_data">Minu andmed – laadi alla (Excel)</string>
     <string name="my_data_hint">Kõik teie töösessioonid ja reisid (CSV).</string>
+    <string name="precise_location_needed">Lülitage sisse TÄPNE asukoht (Seaded → Rakendused → KarjeroReisai → Load → Asukoht).</string>
+    <string name="battery_hint">Et GPS töötaks ka ekraani väljalülitamisel, lubage rakendusel töötada ilma akusäästu piiranguteta.</string>
+    <string name="help">❓ Abi – kuidas kasutada</string>
+    <string name="map_estimated">Katkendjoon – GPS-signaali polnud, tee on ligikaudne.</string>
 </resources>

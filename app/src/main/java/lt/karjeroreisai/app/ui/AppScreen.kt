@@ -677,10 +677,12 @@ private fun SessionMapScreen(
 ) {
     val context = LocalContext.current
     var points by remember(sessionId) { mutableStateOf<List<GpsPoint>>(emptyList()) }
+    var filled by remember(sessionId) { mutableStateOf<RoadFill.Result?>(null) }
 
     LaunchedEffect(sessionId) {
         val details = viewModel.sessionDetails(sessionId)
         points = details.third.filter { it.accuracy <= 60f }
+        filled = RoadFill.fill(listOf(points.map { GeoPoint(it.latitude, it.longitude) }))
     }
 
     Configuration.getInstance().userAgentValue = context.packageName
@@ -721,11 +723,20 @@ private fun SessionMapScreen(
 
                     val geoPoints = points.map { GeoPoint(it.latitude, it.longitude) }
                     if (geoPoints.isNotEmpty()) {
-                        val routeLine = Polyline().apply {
-                            setPoints(geoPoints)
-                            outlinePaint.strokeWidth = 7f
+                        val parts = filled
+                        (parts?.solid ?: listOf(geoPoints)).forEach { line ->
+                            map.overlays.add(Polyline().apply {
+                                setPoints(line)
+                                outlinePaint.strokeWidth = 7f
+                            })
                         }
-                        map.overlays.add(routeLine)
+                        parts?.estimated?.forEach { line ->
+                            map.overlays.add(Polyline().apply {
+                                setPoints(line)
+                                outlinePaint.strokeWidth = 5f
+                                outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(18f, 14f), 0f)
+                            })
+                        }
 
                         val startMarker = Marker(map).apply {
                             position = geoPoints.first()
@@ -777,6 +788,27 @@ private fun startTracking(context: Context, sessionId: Long) {
     val intent = Intent(context, LocationTrackingService::class.java)
         .putExtra(LocationTrackingService.EXTRA_SESSION_ID, sessionId)
     ContextCompat.startForegroundService(context, intent)
+    checkTrackingQuality(context)
+}
+
+/** Warns about approximate location and asks to lift battery restrictions – both break the route. */
+private fun checkTrackingQuality(context: Context) {
+    val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    if (!fine) {
+        android.widget.Toast.makeText(context, context.getString(R.string.precise_location_needed), android.widget.Toast.LENGTH_LONG).show()
+        return
+    }
+    val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+    if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
+        android.widget.Toast.makeText(context, context.getString(R.string.battery_hint), android.widget.Toast.LENGTH_LONG).show()
+        runCatching {
+            @Suppress("BatteryLife")
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:" + context.packageName))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    }
 }
 
 private fun stopTracking(context: Context) {

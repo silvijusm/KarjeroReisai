@@ -244,4 +244,8 @@
     <string name="privacy_accept">Zapoznałem(-am) się</string>
     <string name="my_data">Moje dane – pobierz (Excel)</string>
     <string name="my_data_hint">Wszystkie Twoje sesje i kursy (CSV).</string>
+    <string name="precise_location_needed">Włącz DOKŁADNĄ lokalizację (Ustawienia → Aplikacje → KarjeroReisai → Uprawnienia → Lokalizacja).</string>
+    <string name="battery_hint">Aby GPS działał przy wyłączonym ekranie, zezwól aplikacji na działanie bez ograniczeń baterii.</string>
+    <string name="help">❓ Pomoc – jak korzystać</string>
+    <string name="map_estimated">Linia przerywana – brak sygnału GPS, droga przybliżona.</string>
 </resources>

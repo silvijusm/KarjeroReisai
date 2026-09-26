@@ -244,4 +244,8 @@
     <string name="privacy_accept">Esmu iepazinies</string>
     <string name="my_data">Mani dati – lejupielādēt (Excel)</string>
     <string name="my_data_hint">Visas jūsu darba sesijas un reisi (CSV).</string>
+    <string name="precise_location_needed">Ieslēdziet PRECĪZU atrašanās vietu (Iestatījumi → Lietotnes → KarjeroReisai → Atļaujas → Atrašanās vieta).</string>
+    <string name="battery_hint">Lai GPS strādātu ar izslēgtu ekrānu, atļaujiet lietotnei darboties bez akumulatora ierobežojumiem.</string>
+    <string name="help">❓ Palīdzība</string>
+    <string name="map_estimated">Raustīta līnija – nebija GPS signāla, ceļš aptuvens.</string>
 </resources>

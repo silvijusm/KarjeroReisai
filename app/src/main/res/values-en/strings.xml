@@ -244,4 +244,8 @@
     <string name="privacy_accept">I have read this</string>
     <string name="my_data">My data – download (Excel)</string>
     <string name="my_data_hint">All your work sessions and trips in this company (CSV file).</string>
+    <string name="precise_location_needed">Turn on PRECISE location (Settings → Apps → KarjeroReisai → Permissions → Location). With approximate location the route is drawn as straight lines and trips are not counted.</string>
+    <string name="battery_hint">To keep GPS working with the screen off, allow the app to run without battery restrictions.</string>
+    <string name="help">❓ Help – how to use</string>
+    <string name="map_estimated">Dashed line – no GPS signal, road shown approximately.</string>
 </resources>

@@ -62,6 +62,10 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
                     Text(stringResource(R.string.sign_out))
                 }
             }
+            androidx.compose.material3.TextButton(
+                onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://silvijusm.github.io/KarjeroReisai/pagalba.html"))) } },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.help)) }
             Text(stringResource(R.string.admin_hint))
             val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
             Text(stringResource(R.string.version, version), style = MaterialTheme.typography.bodySmall)
