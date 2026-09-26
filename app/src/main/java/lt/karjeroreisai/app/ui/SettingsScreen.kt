@@ -63,7 +63,7 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
                 }
             }
             androidx.compose.material3.TextButton(
-                onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://silvijusm.github.io/KarjeroReisai/pagalba.html"))) } },
+                onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://silvijusm.github.io/KarjeroReisai/site/pagalba.html"))) } },
                 modifier = Modifier.fillMaxWidth()
             ) { Text(stringResource(R.string.help)) }
             Text(stringResource(R.string.admin_hint))
