@@ -9,21 +9,22 @@ import { HttpsError } from 'firebase-functions/v2/https';
 export const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 export const CODE_LENGTH = 6;
 export const JOIN_LIMIT_PER_HOUR = 10;
-const ASSIGNABLE_ROLES = ['driver', 'dispatcher'];
+// loader = excavator operator at the quarry (free, registers loads).
+const ASSIGNABLE_ROLES = ['driver', 'dispatcher', 'loader'];
 
-export function generateCode(random = randomInt) {
+export function generateCode(random = randomInt, prefix = 'KR') {
   let code = '';
   for (let i = 0; i < CODE_LENGTH; i++) code += CODE_ALPHABET[random(CODE_ALPHABET.length)];
-  return `KR-${code}`;
+  return `${prefix}-${code}`;
 }
 
 // Accepts "kr-ab3k9q", "AB3K9Q", "KR AB3 K9Q". Returns null when malformed.
-export function normalizeCode(value) {
+export function normalizeCode(value, prefix = 'KR') {
   if (typeof value !== 'string') return null;
   let clean = value.toUpperCase().replace(/[\s-]/g, '');
-  if (clean.startsWith('KR')) clean = clean.slice(2);
+  if (clean.startsWith(prefix)) clean = clean.slice(prefix.length);
   if (clean.length !== CODE_LENGTH || [...clean].some(c => !CODE_ALPHABET.includes(c))) return null;
-  return `KR-${clean}`;
+  return `${prefix}-${clean}`;
 }
 
 export function cleanName(value) {
@@ -62,6 +63,29 @@ export function createMembersService({ db, now = Date.now, random = randomInt })
       }
     }
     return { uid, companyId, companyRef, company };
+  }
+
+  async function objectFor(companyId, objectId) {
+    if (!validUid(objectId)) throw new HttpsError('invalid-argument', 'Object is required.');
+    const ref = db.doc(`companies/${companyId}/objects/${objectId}`);
+    const data = (await ref.get()).data();
+    if (!data) throw new HttpsError('not-found', 'Object not found.');
+    return { ref, data };
+  }
+
+  async function setCarrierStatus(auth, data, status) {
+    const { uid, companyId } = await manager(auth, true);
+    const { ref: objectRef } = await objectFor(companyId, data?.objectId);
+    if (!validUid(data?.carrierId)) throw new HttpsError('invalid-argument', 'Carrier is required.');
+    const carrierRef = db.doc(`${objectRef.path}/carriers/${data.carrierId}`);
+    const carrier = (await carrierRef.get()).data();
+    if (!carrier) throw new HttpsError('not-found', 'Carrier not found.');
+    const t = now();
+    const batch = db.batch();
+    batch.set(carrierRef, { status, decidedBy: uid, decidedAtMillis: t }, { merge: true });
+    batch.set(db.doc(`companies/${data.carrierId}/objectLinks/${data.objectId}`), { status, updatedAtMillis: t }, { merge: true });
+    await batch.commit();
+    return { ok: true };
   }
 
   async function rateLimit(uid) {
@@ -111,6 +135,56 @@ export function createMembersService({ db, now = Date.now, random = randomInt })
         return { code };
       });
     },
+
+    // Contractor: join code for an object, shown to carriers (OB-XXXXXX).
+    async objectJoinCode(auth, data) {
+      const { companyId } = await manager(auth, true);
+      const { ref: objectRef } = await objectFor(companyId, data?.objectId);
+      const regenerate = data?.regenerate === true;
+      return db.runTransaction(async tx => {
+        const object = (await tx.get(objectRef)).data() || {};
+        if (object.joinCode && !regenerate) return { code: object.joinCode };
+        let code = null;
+        for (let attempt = 0; attempt < 8 && !code; attempt++) {
+          const candidate = generateCode(random, 'OB');
+          if (!(await tx.get(db.doc(`objectCodes/${candidate}`))).exists) code = candidate;
+        }
+        if (!code) throw new HttpsError('aborted', 'Try again.');
+        if (object.joinCode) tx.delete(db.doc(`objectCodes/${object.joinCode}`));
+        tx.set(db.doc(`objectCodes/${code}`), { contractorId: companyId, objectId: objectRef.id, createdAtMillis: now() });
+        tx.set(objectRef, { joinCode: code }, { merge: true });
+        return { code };
+      });
+    },
+
+    // Carrier company admin asks to work on a contractor's object.
+    async joinObject(auth, data) {
+      const { uid, companyId: carrierId, company: carrier } = await manager(auth, true);
+      await rateLimit(uid);
+      const code = normalizeCode(data?.code, 'OB');
+      if (!code) throw new HttpsError('not-found', 'Unknown object code.');
+      const mapping = (await db.doc(`objectCodes/${code}`).get()).data();
+      if (!mapping) throw new HttpsError('not-found', 'Unknown object code.');
+      const objectRef = db.doc(`companies/${mapping.contractorId}/objects/${mapping.objectId}`);
+      const object = (await objectRef.get()).data();
+      if (!object || object.joinCode !== code || object.status === 'finished') throw new HttpsError('not-found', 'Unknown object code.');
+      const carrierRef = db.doc(`${objectRef.path}/carriers/${carrierId}`);
+      const existing = (await carrierRef.get()).data();
+      if (['pending', 'active'].includes(existing?.status)) throw new HttpsError('already-exists', 'Already joined.');
+      const contractor = (await db.doc(`companies/${mapping.contractorId}`).get()).data() || {};
+      const t = now();
+      const batch = db.batch();
+      batch.set(carrierRef, { carrierName: carrier.name || '', status: 'pending', requestedBy: uid, joinedAtMillis: t });
+      batch.set(db.doc(`companies/${carrierId}/objectLinks/${mapping.objectId}`), {
+        contractorId: mapping.contractorId, contractorName: contractor.name || '',
+        objectName: object.name || '', objectCode: object.objectCode || '', status: 'pending', updatedAtMillis: t,
+      });
+      await batch.commit();
+      return { status: 'pending', objectName: object.name || '', contractorName: contractor.name || '' };
+    },
+
+    approveCarrier(auth, data) { return setCarrierStatus(auth, data, 'active'); },
+    removeCarrier(auth, data) { return setCarrierStatus(auth, data, 'removed'); },
 
     // A signed-in user without a company asks to join one with its code.
     async joinCompany(auth, data) {

@@ -1,7 +1,7 @@
 import { before, after, beforeEach, test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { collection, getDocs, query, orderBy, documentId, limit, doc, setDoc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, documentId, limit, doc, setDoc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
 let env;
 before(async () => {
   if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('Use npm run test:rules (emulator only).');
@@ -281,4 +281,79 @@ test('invalid session, route and live data are rejected', async () => {
   await assertFails(setDoc(doc(c, 'companies/a/sessions/s2/route/1'), { ...route('jonas'), lng: [1] }));
   await assertFails(setDoc(doc(c, 'companies/a/liveLocations/jonas'), live({ state: 'flying' })));
   await assertFails(deleteDoc(doc(c, 'companies/a/liveLocations/jonas')));
+});
+
+// ---- 9–10 etapai: rangovo objektai, vežėjai, krovėjas ----
+// Contractor "b" (owner bob) with object o1 and loader "kasys"; carrier "a" (alice + drivers) approved.
+async function contractor({ approved = true } = {}) {
+  await team(); await register('bob', 'b');
+  await seed('companies/b/objects/o1', { name: 'Kelias A1', objectCode: 'P-256', status: 'active', distanceKm: 7 });
+  await seed('companies/b/objects/o1/carriers/a', { carrierName: 'Test company', status: approved ? 'active' : 'pending' });
+  await seed('companies/b/members/kasys', { role: 'loader', status: 'active', displayName: 'Kasys', email: 'k@example.test' });
+  await seedUser('kasys', { email: 'kasys@example.test', name: 'Kasys', role: 'loader', companyId: 'b', createdAtMillis: 1 });
+}
+const load = (patch = {}) => ({ plate: 'ABC123', carrierId: 'a', carrierName: 'Test company', material: 'Smėlis', tonnes: 26, m3: 16.3,
+  distanceKm: 7, loadedAtMillis: 5000, createdAtMillis: 5000, loaderUid: 'kasys', loaderName: 'Kasys', source: 'qr', note: '', status: 'loaded', ...patch });
+const object = (patch = {}) => ({ name: 'Objektas', objectCode: 'P-1', status: 'active', distanceKm: 7, materials: [{ name: 'Smėlis', densityTm3: 1.6, tonnesPerTrip: 26 }],
+  vehicleTonnes: {}, allowLoaderOverride: false, createdAtMillis: 1, updatedAtMillis: 1, ...patch });
+
+test('contractor admin creates objects but cannot set the join code', async () => {
+  await contractor();
+  await assertSucceeds(setDoc(doc(db('bob'), 'companies/b/objects/o2'), object()));
+  await assertFails(setDoc(doc(db('bob'), 'companies/b/objects/o3'), object({ joinCode: 'OB-AAAAAA' })));
+  await assertFails(setDoc(doc(db('kasys'), 'companies/b/objects/o4'), object()));
+  await assertFails(setDoc(doc(db('alice'), 'companies/b/objects/o5'), object()));
+});
+test('approved carrier driver reads the object; pending carrier and strangers do not', async () => {
+  await contractor();
+  await assertSucceeds(getDoc(doc(db('jonas'), 'companies/b/objects/o1')));
+  await assertSucceeds(getDoc(doc(db('alice'), 'companies/b/objects/o1/carriers/a')));
+  await assertFails(getDoc(doc(db('naujas'), 'companies/b/objects/o1')));
+  await assertFails(getDocs(collection(db('jonas'), 'companies/b/objects/o1/carriers')));
+});
+test('pending carrier cannot see the object', async () => {
+  await contractor({ approved: false });
+  await assertFails(getDoc(doc(db('jonas'), 'companies/b/objects/o1')));
+});
+test('loader registers a load for an approved carrier only', async () => {
+  await contractor();
+  await assertSucceeds(setDoc(doc(db('kasys'), 'companies/b/objects/o1/loads/l1'), load()));
+  await assertFails(setDoc(doc(db('kasys'), 'companies/b/objects/o1/loads/l2'), load({ carrierId: 'zzz' })));
+  await assertFails(setDoc(doc(db('kasys'), 'companies/b/objects/o1/loads/l3'), load({ loaderUid: 'bob' })));
+  await assertFails(setDoc(doc(db('kasys'), 'companies/b/objects/o1/loads/l4'), load({ tonnes: 500 })));
+  await assertFails(setDoc(doc(db('jonas'), 'companies/b/objects/o1/loads/l5'), load({ loaderUid: 'jonas' })));
+});
+test('driver sees own company loads, confirms, but cannot change tonnes or km', async () => {
+  await contractor();
+  await seed('companies/b/objects/o1/loads/l1', load());
+  await assertSucceeds(getDocs(query(collection(db('jonas'), 'companies/b/objects/o1/loads'), where('carrierId', '==', 'a'), where('plate', '==', 'ABC123'))));
+  await assertFails(getDocs(collection(db('jonas'), 'companies/b/objects/o1/loads')));
+  await assertFails(updateDoc(doc(db('jonas'), 'companies/b/objects/o1/loads/l1'), { tonnes: 30 }));
+  await assertFails(updateDoc(doc(db('jonas'), 'companies/b/objects/o1/loads/l1'), { distanceKm: 20, status: 'confirmed', driverUid: 'jonas' }));
+  await assertSucceeds(updateDoc(doc(db('jonas'), 'companies/b/objects/o1/loads/l1'), { status: 'confirmed', driverUid: 'jonas', confirmedAtMillis: 6000 }));
+});
+test('contractor corrects tonnes with history; loader cancels own entry', async () => {
+  await contractor();
+  await seed('companies/b/objects/o1/loads/l1', load());
+  await assertFails(updateDoc(doc(db('bob'), 'companies/b/objects/o1/loads/l1'), { tonnes: 20, editedBy: 'bob', editedAtMillis: 1 }));
+  await assertSucceeds(updateDoc(doc(db('bob'), 'companies/b/objects/o1/loads/l1'),
+    { tonnes: 20, editedBy: 'bob', editedAtMillis: 1, history: [{ by: 'bob', field: 'tonnes', old: 26, new: 20, reason: 'mažesnė mašina' }] }));
+  await assertSucceeds(updateDoc(doc(db('kasys'), 'companies/b/objects/o1/loads/l1'), { status: 'cancelled' }));
+  await assertFails(deleteDoc(doc(db('bob'), 'companies/b/objects/o1/loads/l1')));
+});
+test('contractor sees carrier vehicle only on its object, never the carrier map', async () => {
+  await contractor();
+  await assertSucceeds(setDoc(doc(db('jonas'), 'companies/b/objects/o1/live/jonas'), { ...live(), carrierId: 'a', carrierName: 'Test company' }));
+  await assertSucceeds(getDocs(collection(db('bob'), 'companies/b/objects/o1/live')));
+  await assertSucceeds(getDocs(collection(db('kasys'), 'companies/b/objects/o1/live')));
+  await assertFails(getDocs(collection(db('bob'), 'companies/a/liveLocations')));
+  await assertFails(getDocs(collection(db('bob'), 'companies/a/sessions')));
+  await assertFails(setDoc(doc(db('jonas'), 'companies/b/objects/o1/live/jonas'), { ...live(), carrierId: 'b' }));
+});
+test('object codes, links and carrier records are server-written only', async () => {
+  await contractor();
+  await assertFails(setDoc(doc(db('alice'), 'companies/b/objects/o1/carriers/a'), { status: 'active' }));
+  await assertFails(setDoc(doc(db('alice'), 'companies/a/objectLinks/o1'), { status: 'active' }));
+  await assertFails(setDoc(doc(db('bob'), 'objectCodes', 'OB-AAAAAA'), { contractorId: 'b' }));
+  await assertSucceeds(getDoc(doc(db('jonas'), 'companies/a/objectLinks/o1')));
 });

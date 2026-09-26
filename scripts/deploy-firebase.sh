@@ -19,4 +19,4 @@ echo "export const firebaseConfig = $CONFIG;" > web/config.js
 echo "Web config written for app $APP_ID"
 
 npm ci --prefix members --no-audit --no-fund
-$FB deploy --force --only firestore:rules,functions:members,hosting
+$FB deploy --force --only firestore:rules,firestore:indexes,functions:members,hosting

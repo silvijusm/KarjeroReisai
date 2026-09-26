@@ -151,3 +151,50 @@ test('forged profile without active membership grants no management rights', asy
   f.data.set('users/forger', { companyId: 'c1', role: 'company_admin' });
   await assert.rejects(f.service.approveMember(auth('forger'), { uid: 'x' }), { code: 'permission-denied' });
 });
+
+// ---- Rangovas: objektai ir vežėjai ----
+async function objectSetup(f) {
+  f.data.set('companies/c2/objects/o1', { name: 'Kelias A1', objectCode: 'P-256', status: 'active' });
+  const { code } = await f.service.objectJoinCode(auth('owner2'), { objectId: 'o1' });
+  return code;
+}
+test('contractor gets an object join code; others cannot', async () => {
+  const f = fixture();
+  const code = await objectSetup(f);
+  assert.match(code, /^OB-[2-9A-Z]{6}$/);
+  assert.deepEqual(await f.service.objectJoinCode(auth('owner2'), { objectId: 'o1' }), { code });
+  await assert.rejects(f.service.objectJoinCode(auth('owner'), { objectId: 'o1' }), { code: 'not-found' });
+  await assert.rejects(f.service.objectJoinCode(auth('stranger'), { objectId: 'o1' }), { code: 'permission-denied' });
+});
+test('carrier joins object as pending; contractor approves and removes', async () => {
+  const f = fixture();
+  const code = await objectSetup(f);
+  const r = await f.service.joinObject(auth('owner'), { code: code.toLowerCase() });
+  assert.equal(r.status, 'pending');
+  assert.equal(f.data.get('companies/c2/objects/o1/carriers/c1').status, 'pending');
+  assert.equal(f.data.get('companies/c1/objectLinks/o1').contractorId, 'c2');
+  await assert.rejects(f.service.joinObject(auth('owner'), { code }), { code: 'already-exists' });
+  await assert.rejects(f.service.approveCarrier(auth('owner'), { objectId: 'o1', carrierId: 'c1' }), { code: 'not-found' });
+  await f.service.approveCarrier(auth('owner2'), { objectId: 'o1', carrierId: 'c1' });
+  assert.equal(f.data.get('companies/c2/objects/o1/carriers/c1').status, 'active');
+  assert.equal(f.data.get('companies/c1/objectLinks/o1').status, 'active');
+  await f.service.removeCarrier(auth('owner2'), { objectId: 'o1', carrierId: 'c1' });
+  assert.equal(f.data.get('companies/c1/objectLinks/o1').status, 'removed');
+});
+test('drivers cannot join objects; wrong or finished object codes are rejected', async () => {
+  const f = fixture();
+  const code = await objectSetup(f);
+  await joined(f);
+  await f.service.approveMember(auth('owner'), { uid: 'jonas' });
+  await assert.rejects(f.service.joinObject(auth('jonas'), { code }), { code: 'permission-denied' });
+  await assert.rejects(f.service.joinObject(auth('owner'), { code: 'OB-ZZZZZZ' }), { code: 'not-found' });
+  f.data.set('companies/c2/objects/o1', { ...f.data.get('companies/c2/objects/o1'), status: 'finished' });
+  await assert.rejects(f.service.joinObject(auth('owner'), { code }), { code: 'not-found' });
+});
+test('loader role can be assigned', async () => {
+  const f = fixture();
+  await joined(f);
+  await f.service.approveMember(auth('owner'), { uid: 'jonas' });
+  await f.service.setMemberRole(auth('owner'), { uid: 'jonas', role: 'loader' });
+  assert.equal(f.data.get('users/jonas').role, 'loader');
+});

@@ -73,6 +73,42 @@ service cloud.firestore {
         && data.keys().hasAll(['state', 'updatedAtMillis'])
         && data.state in ['moving', 'stopped', 'loading', 'unloading', 'offline'];
     }
+    function myCompany() {
+      return currentUser().data.companyId;
+    }
+    function isActiveLoader(companyId) {
+      return isActiveMember(companyId) && member(companyId).data.role == 'loader';
+    }
+    // The caller works for a carrier company that the contractor approved on this object.
+    function isApprovedCarrier(companyId, objectId) {
+      return signedIn() && canWork(myCompany())
+        && get(/databases/$(database)/documents/companies/$(companyId)/objects/$(objectId)/carriers/$(myCompany())).data.status == 'active';
+    }
+    function validObject(data) {
+      return data.keys().hasOnly(['name', 'objectCode', 'status', 'joinCode', 'sender', 'receiver',
+          'quarryName', 'quarryLat', 'quarryLng', 'quarryRadiusM', 'unloadName', 'unloadLat', 'unloadLng', 'unloadRadiusM',
+          'distanceKm', 'materials', 'vehicleTonnes', 'allowLoaderOverride', 'gpsWarnPct', 'waybillSeries', 'createdAtMillis', 'updatedAtMillis'])
+        && validName(data.name)
+        && data.status in ['active', 'finished']
+        && (!('materials' in data) || (data.materials is list && data.materials.size() <= 30));
+    }
+    function validObjectLive(data) {
+      return data.keys().hasOnly(['lat', 'lng', 'speedKmh', 'heading', 'accuracyM', 'updatedAtMillis', 'sessionId',
+          'plate', 'driverName', 'state', 'tripsCount', 'tonnes', 'startedAtMillis', 'objectId', 'carrierId', 'carrierName'])
+        && data.keys().hasAll(['state', 'updatedAtMillis'])
+        && data.state in ['moving', 'stopped', 'loading', 'unloading', 'offline']
+        && (!('carrierId' in data) || data.carrierId == myCompany());
+    }
+    function validLoad(data) {
+      return data.keys().hasOnly(['plate', 'carrierId', 'carrierName', 'material', 'tonnes', 'm3', 'distanceKm',
+          'loadedAtMillis', 'createdAtMillis', 'loaderUid', 'loaderName', 'source', 'note', 'status'])
+        && data.loaderUid == request.auth.uid
+        && data.status == 'loaded'
+        && data.plate is string && data.plate.size() > 0 && data.plate.size() <= 20
+        && data.carrierId is string
+        && data.tonnes is number && data.tonnes > 0 && data.tonnes <= 100
+        && data.loadedAtMillis is int;
+    }
     function validVehicle(data) {
       return data.keys().hasAll(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
@@ -160,7 +196,53 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == uid || isManager(companyId));
       allow create, update: if request.auth.uid == uid && canWork(companyId) && validLive(request.resource.data);
     }
-    // companyCodes and rateLimits are server-only.
+    // ---- Contractor objects (road / building site), carriers and loads ----
+    // Carriers see an object only while approved on it; the contractor sees a carrier's
+    // vehicles only through the object (live/, loads/), never the carrier's other work.
+    match /companies/{companyId}/objects/{objectId} {
+      allow read: if isManager(companyId) || isActiveLoader(companyId) || isApprovedCarrier(companyId, objectId);
+      allow create: if isCompanyAdmin(companyId) && validObject(request.resource.data)
+        && !('joinCode' in request.resource.data);
+      allow update: if isCompanyAdmin(companyId) && validObject(request.resource.data)
+        && request.resource.data.get('joinCode', null) == resource.data.get('joinCode', null);
+
+      match /carriers/{carrierId} {
+        allow read: if isManager(companyId) || (carrierId == myCompany() && canWork(carrierId));
+      }
+      match /live/{uid} {
+        allow read: if isManager(companyId) || isActiveLoader(companyId);
+        allow create, update: if request.auth.uid == uid && isApprovedCarrier(companyId, objectId)
+          && validObjectLive(request.resource.data);
+      }
+      match /loads/{loadId} {
+        allow read: if isManager(companyId) || isActiveLoader(companyId)
+          || (signedIn() && resource.data.carrierId == myCompany() && canWork(myCompany()));
+        // The excavator operator (or contractor admin) registers a load for an approved carrier.
+        allow create: if (isActiveLoader(companyId) || isCompanyAdmin(companyId))
+          && validLoad(request.resource.data)
+          && get(/databases/$(database)/documents/companies/$(companyId)/objects/$(objectId)/carriers/$(request.resource.data.carrierId)).data.status == 'active';
+        // Driver of the carrier confirms or disputes; cannot change tonnes or km.
+        allow update: if (signedIn() && resource.data.carrierId == myCompany() && canWork(myCompany())
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'driverUid', 'driverNote', 'confirmedAtMillis'])
+            && request.resource.data.status in ['confirmed', 'disputed']
+            && request.resource.data.driverUid == request.auth.uid)
+          // Contractor corrects tonnes / km / material; every change is kept in history.
+          || (isManager(companyId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tonnes', 'm3', 'distanceKm', 'material', 'history', 'editedBy', 'editedAtMillis'])
+            && request.resource.data.editedBy == request.auth.uid
+            && request.resource.data.tonnes is number && request.resource.data.tonnes >= 0 && request.resource.data.tonnes <= 100
+            && request.resource.data.history is list && request.resource.data.history.size() > resource.data.get('history', []).size())
+          // The loader may cancel their own mistaken entry.
+          || (isActiveLoader(companyId) && resource.data.loaderUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'cancelled');
+      }
+    }
+    // Objects a carrier company works on (written by the server when joining / approved).
+    match /companies/{companyId}/objectLinks/{objectId} {
+      allow read: if canWork(companyId) || isManager(companyId);
+    }
+    // companyCodes, objectCodes and rateLimits are server-only.
     // No client deletes; unmatched collections are denied by default.
   }
 }
