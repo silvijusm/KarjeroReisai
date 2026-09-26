@@ -246,6 +246,13 @@ fun KarjeroReisaiApp(
                         )
                     }
 
+                    androidx.activity.compose.BackHandler(enabled = screen != Screen.HOME) {
+                        screen = when (screen) {
+                            Screen.MAP -> Screen.SUMMARY
+                            Screen.SUMMARY -> { viewModel.loadHistory(); Screen.HISTORY }
+                            else -> Screen.HOME
+                        }
+                    }
                     when (screen) {
                         Screen.HOME -> if (dashboard.session == null) {
                             StartScreen(
@@ -584,8 +591,8 @@ private fun HistoryScreen(
 ) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(R.string.history), style = MaterialTheme.typography.headlineMedium)
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Text(stringResource(R.string.history), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(sessions, key = { it.id }) { session ->
@@ -619,7 +626,7 @@ private fun SummaryScreen(
     if (data == null) {
         Column(Modifier.fillMaxSize().padding(16.dp)) {
             Text(stringResource(R.string.loading))
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            TextButton(onClick = onBack) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
         return
     }
@@ -692,8 +699,8 @@ private fun SessionMapScreen(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(stringResource(R.string.route_map), fontWeight = FontWeight.Bold)
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Text(stringResource(R.string.route_map), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
 
         if (points.isEmpty()) {
@@ -701,6 +708,7 @@ private fun SessionMapScreen(
         } else {
             val mapView = remember(sessionId) {
                 MapView(context).apply {
+                    setTilesScaledToDpi(true)
                     setTileSource(TileSourceFactory.MAPNIK)
                     setMultiTouchControls(true)
                     controller.setZoom(14.0)

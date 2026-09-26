@@ -30,8 +30,8 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)
         .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(if (adminOpen) R.string.admin else R.string.settings), style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = { if (adminOpen) adminOpen = false else onBack() }) { Text(stringResource(R.string.back)) }
+            Text(stringResource(if (adminOpen) R.string.admin else R.string.settings), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = { if (adminOpen) adminOpen = false else onBack() }) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
         if (adminOpen && auth.signedIn && auth.role == "super_admin") {
             AdminPanel(auth.uid.orEmpty())

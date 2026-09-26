@@ -224,8 +224,8 @@ fun ObjectsScreen(auth: AuthUiState, links: List<ObjectLink>, onBack: () -> Unit
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.objects), style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Text(stringResource(R.string.objects), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
         Text(stringResource(R.string.objects_intro))
         if (auth.isCompanyAdmin) {
@@ -641,6 +641,7 @@ private fun LoaderMap(
     org.osmdroid.config.Configuration.getInstance().userAgentValue = context.packageName
     val map = remember(obj.id) {
         org.osmdroid.views.MapView(context).apply {
+            setTilesScaledToDpi(true)
             setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             controller.setZoom(if (obj.quarryLat != null) 15.5 else 8.0)
