@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>KarjeroReisai – Dispečerio centras</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<section id="login" class="login">
+  <form id="loginForm" class="login-card">
+    <div class="logo">KR</div>
+    <h1>KarjeroReisai</h1>
+    <p data-t="loginTitle">Įmonės dispečerio centras</p>
+    <label><span data-t="email">El. paštas</span><input id="email" type="email" required autocomplete="email"></label>
+    <label><span data-t="password">Slaptažodis</span><input id="password" type="password" required autocomplete="current-password"></label>
+    <button class="primary" type="submit" data-t="signIn">Prisijungti</button>
+    <p id="loginError" class="error"></p>
+  </form>
+</section>
+
+<div id="app" class="app hidden">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo small">KR</div><div><b>KarjeroReisai</b><small id="companyName">—</small></div></div>
+    <nav id="nav">
+      <button class="nav active" data-page="map">▦ <span data-t="map">Žemėlapis</span></button>
+      <button class="nav" data-page="drivers">◉ <span data-t="drivers">Vairuotojai</span></button>
+      <button class="nav" data-page="vehicles">▣ <span data-t="vehicles">Automobiliai</span></button>
+      <button class="nav" data-page="reports">▤ <span data-t="reports">Ataskaitos</span></button>
+      <button class="nav" data-page="billing">€ <span data-t="billing">Mokėjimas</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      <select id="lang"><option>LT</option><option>EN</option><option>RU</option><option>LV</option><option>ET</option><option>PL</option></select>
+      <button id="logout" class="ghost" data-t="logout">Atsijungti</button>
+    </div>
+  </aside>
+
+  <main>
+    <header><div><h2 id="title">Dispečerio žemėlapis</h2><p id="status" class="muted">—</p></div><span id="userBadge" class="pill">—</span></header>
+
+    <section id="page-map" class="page active">
+      <div class="stats">
+        <article><span data-t="active">Aktyvūs</span><b id="activeCount">0</b></article>
+        <article><span data-t="tripsToday">Reisai šiandien</span><b id="tripsCount">0</b></article>
+        <article><span data-t="kmToday">Km šiandien</span><b id="kmCount">0</b></article>
+        <article><span data-t="tonnesToday">Tonos šiandien</span><b id="tonnesCount">0</b></article>
+      </div>
+      <div class="map-grid"><div id="map"></div><div class="panel"><input id="searchFleet" placeholder="Paieška"><div id="fleet"></div></div></div>
+    </section>
+
+    <section id="page-drivers" class="page">
+      <div class="section-head"><div><h3 data-t="drivers">Vairuotojai</h3><p class="muted" data-t="driversHelp">Patvirtinkite prisijungimus ir valdykite roles.</p></div><div class="company-code"><span data-t="companyCode">Įmonės kodas</span><b id="companyCode">—</b><button id="newCode" class="secondary admin-only" data-t="newCode">Naujas kodas</button></div></div>
+      <div id="members" class="table-card"></div>
+    </section>
+
+    <section id="page-vehicles" class="page">
+      <div class="section-head"><div><h3 data-t="vehicles">Automobiliai</h3><p class="muted" data-t="vehiclesHelp">Įmonės transporto sąrašas.</p></div><button id="addVehicle" class="primary admin-only" data-t="addVehicle">Pridėti automobilį</button></div>
+      <div id="vehiclesTable" class="table-card"></div>
+    </section>
+
+    <section id="page-reports" class="page">
+      <div class="section-head"><div><h3 data-t="reports">Ataskaitos</h3><p class="muted" data-t="reportsHelp">Sesijos, reisai, kilometrai ir tonos.</p></div><button id="csv" class="secondary">CSV</button></div>
+      <div id="reportsTable" class="table-card"></div>
+    </section>
+
+    <section id="page-billing" class="page">
+      <article class="card"><h3 data-t="billing">Mokėjimas</h3><p><span data-t="plan">Planas</span>: <b id="plan">—</b></p><p><span data-t="billingStatus">Būsena</span>: <b id="billingState">—</b></p><button id="portal" class="primary admin-only" data-t="portal">Atidaryti Stripe portalą</button><p class="muted" data-t="billingHelp">Įmonėms: 3 € už vairuotoją per mėnesį, mažiausiai už 3.</p></article>
+    </section>
+  </main>
+</div>
+
+<dialog id="vehicleDialog"><form id="vehicleForm"><h3 data-t="addVehicle">Pridėti automobilį</h3><label>Valst. Nr.<input id="plate" required maxlength="16"></label><label>Markė<input id="make" maxlength="80"></label><label>Pavadinimas<input id="vehicleName" maxlength="200"></label><label>Keliamoji galia, t<input id="payload" type="number" min="0" max="200" step="0.1"></label><div class="dialog-actions"><button type="button" id="cancelVehicle" class="ghost" data-t="cancel">Atšaukti</button><button class="primary" type="submit" data-t="save">Išsaugoti</button></div></form></dialog>
+
+<script src="/__/firebase/11.6.0/firebase-app-compat.js"></script>
+<script src="/__/firebase/11.6.0/firebase-auth-compat.js"></script>
+<script src="/__/firebase/11.6.0/firebase-firestore-compat.js"></script>
+<script src="/__/firebase/11.6.0/firebase-functions-compat.js"></script>
+<script src="/__/firebase/init.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
