@@ -248,4 +248,14 @@
     <string name="battery_hint">Aby GPS działał przy wyłączonym ekranie, zezwól aplikacji na działanie bez ograniczeń baterii.</string>
     <string name="help">❓ Pomoc – jak korzystać</string>
     <string name="map_estimated">Linia przerywana – brak sygnału GPS, droga przybliżona.</string>
+    <string name="delete_account">Usuń konto</string>
+    <string name="delete_account_title">Usunąć konto?</string>
+    <string name="delete_account_owner_text">Zostanie usunięta cała firma „%1$s”: pracownicy, pojazdy, kursy, trasy, obiekty, załadunki i faktury. Tego nie można cofnąć.</string>
+    <string name="delete_account_member_text">Zostanie usunięte Twoje konto, logowanie i lokalizacja. Wykonane kursy pozostają w ewidencji „%1$s”. Tego nie można cofnąć.</string>
+    <string name="delete_account_solo_text">Zostanie usunięte Twoje konto i dane w tym telefonie. Tego nie można cofnąć.</string>
+    <string name="delete_account_type">Aby potwierdzić, wpisz: %1$s</string>
+    <string name="delete_account_word">USUŃ</string>
+    <string name="delete_account_confirm">Usuń na zawsze</string>
+    <string name="delete_account_subscription">Najpierw anuluj subskrypcję.</string>
+    <string name="delete_account_done">Konto usunięte.</string>
 </resources>

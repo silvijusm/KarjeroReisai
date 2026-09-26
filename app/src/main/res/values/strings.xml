@@ -248,4 +248,14 @@
     <string name="battery_hint">Kad GPS veiktų ir užgesus ekranui, leiskite programėlei veikti be baterijos taupymo apribojimų.</string>
     <string name="help">❓ Pagalba – kaip naudotis</string>
     <string name="map_estimated">Punktyrinė linija – GPS signalo nebuvo, kelias parodytas apytiksliai.</string>
+    <string name="delete_account">Ištrinti paskyrą</string>
+    <string name="delete_account_title">Ištrinti paskyrą?</string>
+    <string name="delete_account_owner_text">Bus ištrinta visa įmonė „%1$s“: darbuotojai, automobiliai, reisai, maršrutai, objektai, pakrovimai ir sąskaitos. Vairuotojai nebeturės prieigos. Atšaukti nebus galima. Jei reikia, prieš tai atsisiųskite ataskaitas ir sąskaitas dispečerio centre.</string>
+    <string name="delete_account_member_text">Bus ištrinta jūsų paskyra, prisijungimas ir buvimo vieta. Jūsų atlikti reisai ir pakrovimai lieka įmonės „%1$s“ apskaitoje – juos saugo darbdavys. Atšaukti nebus galima.</string>
+    <string name="delete_account_solo_text">Bus ištrinta jūsų paskyra, prisijungimas ir šiame telefone saugomi duomenys. Atšaukti nebus galima.</string>
+    <string name="delete_account_type">Patvirtinimui įrašykite: %1$s</string>
+    <string name="delete_account_word">IŠTRINTI</string>
+    <string name="delete_account_confirm">Ištrinti visam laikui</string>
+    <string name="delete_account_subscription">Pirmiausia atšaukite prenumeratą: Tvarkyti prenumeratą → Atšaukti. Tada paskyrą galėsite ištrinti.</string>
+    <string name="delete_account_done">Paskyra ištrinta.</string>
 </resources>

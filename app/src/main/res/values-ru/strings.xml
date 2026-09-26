@@ -248,4 +248,14 @@
     <string name="battery_hint">Чтобы GPS работал при выключенном экране, разрешите приложению работать без ограничений экономии батареи.</string>
     <string name="help">❓ Помощь – как пользоваться</string>
     <string name="map_estimated">Пунктир – не было GPS-сигнала, дорога показана приблизительно.</string>
+    <string name="delete_account">Удалить аккаунт</string>
+    <string name="delete_account_title">Удалить аккаунт?</string>
+    <string name="delete_account_owner_text">Будет удалена вся компания «%1$s»: сотрудники, автомобили, рейсы, маршруты, объекты, погрузки и счета. Водители потеряют доступ. Отменить нельзя. При необходимости сначала скачайте отчёты и счета.</string>
+    <string name="delete_account_member_text">Будут удалены ваш аккаунт, вход и местоположение. Выполненные рейсы и погрузки остаются в учёте «%1$s» – их хранит работодатель. Отменить нельзя.</string>
+    <string name="delete_account_solo_text">Будут удалены ваш аккаунт, вход и данные на этом телефоне. Отменить нельзя.</string>
+    <string name="delete_account_type">Для подтверждения введите: %1$s</string>
+    <string name="delete_account_word">УДАЛИТЬ</string>
+    <string name="delete_account_confirm">Удалить навсегда</string>
+    <string name="delete_account_subscription">Сначала отмените подписку: Управление подпиской → Отменить. Затем можно удалить аккаунт.</string>
+    <string name="delete_account_done">Аккаунт удалён.</string>
 </resources>

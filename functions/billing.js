@@ -220,7 +220,7 @@ export function createBillingService({ db, stripe, config, now = Date.now }) {
           plan, billingUpdatedAtMillis: now(), billingPlan: planOf(sub),
           seats: sub?.items?.data?.[0]?.quantity ?? null, graceUntilMillis: pastDueSince ? pastDueSince + GRACE_MS : null,
         }, { merge: true });
-        batch.set(ref, { subscriptionId: sub?.id || null, subscriptionStatus: sub?.status || 'none', pastDueSinceMillis: pastDueSince, plan: planOf(sub) }, { merge: true });
+        batch.set(ref, { subscriptionId: sub?.id || null, subscriptionStatus: sub?.status || 'none', cancelAtPeriodEnd: !!sub?.cancel_at_period_end, pastDueSinceMillis: pastDueSince, plan: planOf(sub) }, { merge: true });
         batch.set(receipt, { companyId: ref.id, processedAtMillis: now() });
         await batch.commit();
       } finally { await release(); }

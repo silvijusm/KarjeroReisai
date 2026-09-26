@@ -248,4 +248,14 @@
     <string name="battery_hint">Et GPS töötaks ka ekraani väljalülitamisel, lubage rakendusel töötada ilma akusäästu piiranguteta.</string>
     <string name="help">❓ Abi – kuidas kasutada</string>
     <string name="map_estimated">Katkendjoon – GPS-signaali polnud, tee on ligikaudne.</string>
+    <string name="delete_account">Kustuta konto</string>
+    <string name="delete_account_title">Kustutada konto?</string>
+    <string name="delete_account_owner_text">Kustutatakse kogu ettevõte „%1$s“: töötajad, sõidukid, reisid, marsruudid, objektid, laadimised ja arved. Seda ei saa tagasi võtta.</string>
+    <string name="delete_account_member_text">Kustutatakse teie konto, sisselogimine ja asukoht. Tehtud reisid jäävad „%1$s“ arvestusse. Seda ei saa tagasi võtta.</string>
+    <string name="delete_account_solo_text">Kustutatakse teie konto ja andmed selles telefonis. Seda ei saa tagasi võtta.</string>
+    <string name="delete_account_type">Kinnitamiseks sisestage: %1$s</string>
+    <string name="delete_account_word">KUSTUTA</string>
+    <string name="delete_account_confirm">Kustuta jäädavalt</string>
+    <string name="delete_account_subscription">Esmalt tühistage tellimus.</string>
+    <string name="delete_account_done">Konto kustutatud.</string>
 </resources>
