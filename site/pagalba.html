@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pagalba – KarjeroReisai</title>
+<meta name="description" content="KarjeroReisai pagalba: kaip įdiegti, nustatyti ir naudotis programėle bei dispečerio centru.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sand:#F3EEE4; --ochre:#E8C98A; --ink:#1C1B18; --ink2:#3A3832; --mute:#6b655a;
+  --paper:#FBF8F2; --accent:#B8501A; --ok:#2F6B3A; --line:#d9d1c2;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --pad:clamp(16px,5vw,64px);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--sand);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+h1,h2{font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:.95;margin:0}
+h1{font-size:clamp(46px,7vw,88px)}
+h2{font-size:clamp(32px,4vw,50px);margin-bottom:14px}
+h3{font-size:20px;margin:22px 0 8px}
+header{position:sticky;top:0;z-index:10;background:var(--sand);border-bottom:2px solid var(--ink);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px var(--pad)}
+.logo{text-decoration:none;color:var(--ink);font-family:var(--display);font-weight:800;font-size:26px;text-transform:uppercase}
+.logo span{color:var(--accent)}
+header nav{display:flex;gap:16px;flex-wrap:wrap;font-weight:600;font-size:15px}
+header nav a{color:var(--ink);text-decoration:none}
+.hero{padding:40px var(--pad) 24px;max-width:1100px;margin:auto}
+.hero p{max-width:720px;margin-top:14px;font-size:19px}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.btn{display:inline-flex;align-items:center;min-height:50px;padding:0 20px;border-radius:8px;font-weight:600;text-decoration:none;border:2px solid var(--ink);color:var(--ink)}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;padding:0 var(--pad);max-width:1100px;margin:10px auto 0}
+.role{display:block;background:var(--paper);border:2px solid var(--ink);border-radius:10px;padding:16px;text-decoration:none;color:var(--ink)}
+.role b{display:block;font-size:18px}
+.role small{color:var(--mute);font-size:15px}
+main{max-width:1100px;margin:auto;padding:10px var(--pad) 60px}
+section{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:clamp(18px,3vw,32px);margin-top:22px;scroll-margin-top:80px}
+ol,ul{padding-left:24px;margin:8px 0}
+li{margin:6px 0}
+.btnname{display:inline-block;background:var(--ink);color:var(--sand);border-radius:5px;padding:0 7px;font-weight:600;font-size:.92em;white-space:nowrap}
+.tip{background:#fff6e6;border-left:5px solid var(--ochre);padding:12px 14px;border-radius:6px;margin:14px 0}
+.warn{background:#fbeae3;border-left:5px solid var(--accent);padding:12px 14px;border-radius:6px;margin:14px 0}
+details{border-top:1px solid var(--line);padding:12px 0}
+details:last-child{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-weight:600;font-size:18px}
+details > *:not(summary){margin-top:8px}
+.toc{columns:2 260px;margin:0;padding-left:20px}
+code{background:#efe7d8;padding:1px 6px;border-radius:4px;font-size:.95em}
+footer{background:var(--ink);color:#cfc8ba;padding:36px var(--pad);font-size:15px}
+footer a{color:var(--ochre)}
+@media (max-width:640px){header nav{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="index.html">Karjero<span>Reisai</span></a>
+  <nav aria-label="Meniu">
+    <a href="index.html">Pradžia</a>
+    <a href="#duk">Dažni klausimai</a>
+    <a href="https://karjieroreisai.web.app">Dispečerio centras</a>
+    <a href="#kontaktai">Kontaktai</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <h1>Pagalba</h1>
+  <p>Čia rasite, kaip įdiegti programėlę, viską nustatyti ir kaip kuri dalis veikia. Pasirinkite, kas jūs esate, ir sekite žingsnius.</p>
+  <div class="links">
+    <a class="btn btn-accent" href="https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk">Atsisiųsti programėlę (Android)</a>
+    <a class="btn" href="https://karjieroreisai.web.app">Dispečerio centras (kompiuteriui)</a>
+  </div>
+</div>
+
+<div class="roles">
+  <a class="role" href="#vienas"><b>🚚 Dirbu vienas</b><small>Savo reisų apskaita be dispečerio</small></a>
+  <a class="role" href="#imone"><b>🏢 Vežėjo įmonė</b><small>Keli vairuotojai, žemėlapis, ataskaitos</small></a>
+  <a class="role" href="#vairuotojas"><b>👷 Vairuotojas įmonėje</b><small>Prisijungimas prie įmonės, darbo diena</small></a>
+  <a class="role" href="#rangovas"><b>🛣 Rangovas (objektas)</b><small>Kelias, statybvietė, vežėjai, važtaraščiai</small></a>
+  <a class="role" href="#ekskavatorius"><b>🚜 Ekskavatorininkas</b><small>Pakrovimų žymėjimas karjere</small></a>
+  <a class="role" href="#saskaitos"><b>🧾 Sąskaitos faktūros</b><small>Iš pakrovimų vienu mygtuku</small></a>
+</div>
+
+<main>
+
+<section id="turinys">
+  <h2>Turinys</h2>
+  <ol class="toc">
+    <li><a href="#idiegimas">Programėlės įdiegimas ir leidimai</a></li>
+    <li><a href="#vienas">Dirbu vienas</a></li>
+    <li><a href="#imone">Vežėjo įmonė (viršininkas)</a></li>
+    <li><a href="#vairuotojas">Vairuotojas įmonėje</a></li>
+    <li><a href="#dispeceris">Dispečerio centras kompiuteryje</a></li>
+    <li><a href="#rangovas">Rangovas ir objektai</a></li>
+    <li><a href="#ekskavatorius">Ekskavatorininkas (krovėjas)</a></li>
+    <li><a href="#saskaitos">Sąskaitos faktūros</a></li>
+    <li><a href="#prenumerata">Prenumerata ir mokėjimai</a></li>
+    <li><a href="#duomenys">Asmens duomenys</a></li>
+    <li><a href="#duk">Dažni klausimai ir problemos</a></li>
+  </ol>
+</section>
+
+<section id="idiegimas">
+  <h2>1. Įdiegimas</h2>
+  <ol>
+    <li>Telefone atidarykite nuorodą <a href="https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk">Atsisiųsti programėlę</a>.</li>
+    <li>Kai failas atsisiųs, paspauskite jį. Jei telefonas paklaus – leiskite <b>diegti programas iš šio šaltinio</b> (naršyklei arba „Failams“).</li>
+    <li>Spauskite <span class="btnname">Įdiegti</span>, tada <span class="btnname">Atidaryti</span>.</li>
+    <li>Programėlė paprašys leidimų. Leiskite:
+      <ul>
+        <li><b>Vieta</b> – „Leisti naudojant programą“ ir <b>tiksli vieta</b> (be jos reisai neskaičiuojami);</li>
+        <li><b>Pranešimai</b> – kad matytumėte pakrovimus ir veikiantį darbą;</li>
+        <li><b>Kamera</b> – tik ekskavatorininkui, QR kodams skenuoti.</li>
+      </ul>
+    </li>
+  </ol>
+  <div class="tip"><b>Svarbu:</b> telefono nustatymuose (Programos → KarjeroReisai → Baterija) pasirinkite <b>„Neribota“ / „Neoptimizuoti“</b>. Kitaip kai kurie telefonai (Samsung, Xiaomi, Huawei) išjungia GPS, kai ekranas užgesęs, ir reisai nepasiskaičiuoja.</div>
+  <p>Kalbą galite pakeisti programėlėje: <span class="btnname">Nustatymai</span> → <span class="btnname">Kalba</span> (lietuvių, anglų, rusų, latvių, estų, lenkų).</p>
+</section>
+
+<section id="vienas">
+  <h2>2. Dirbu vienas</h2>
+  <p>Jei vežate pats ir dispečerio nereikia – programėlė skaičiuoja jūsų reisus, kilometrus, tonas ir uždarbį.</p>
+  <h3>Registracija</h3>
+  <ol>
+    <li>Atidarykite programėlę → <span class="btnname">Neturiu paskyros – registruotis</span> → <span class="btnname">Įmonė</span>.</li>
+    <li>Įrašykite vardą, įmonės (arba savo) pavadinimą, el. paštą ir slaptažodį (bent 6 simboliai).</li>
+    <li>Pirmos <b>30 dienų nemokamai</b>, kortelės nereikia.</li>
+  </ol>
+  <h3>Darbo diena</h3>
+  <ol>
+    <li>Pradiniame ekrane įrašykite <b>pakrovimo vietą</b> (pvz. karjero pavadinimą), <b>iškrovimo vietą</b>, vilkiko ir puspriekabės numerius, <b>svorį (t)</b> vienam reisui.</li>
+    <li>Pasirinkite tarifą: EUR už reisą, už toną, už dieną arba už t‑km, ir įrašykite sumą.</li>
+    <li>Palikite įjungtą <b>Automatinis reisų skaičiavimas</b>. GPS zonos spindulys – 150 m (didelėje aikštelėje galite padidinti iki 250–300 m).</li>
+    <li>Būdami <b>karjere</b> (pakrovimo vietoje) spauskite <span class="btnname">Pradėti darbą</span>. Ši vieta tampa tašku A.</li>
+    <li>Nuvažiavę iki <b>iškrovimo vietos</b> pirmą kartą spauskite <span class="btnname">Nustatyti B čia ir įrašyti pirmą reisą</span>.</li>
+    <li>Toliau nieko spausti nereikia: kiekvieną kartą, kai iš A atvažiuojate į B, programėlė pati įrašo reisą.</li>
+    <li>Jei reisas nepasiskaičiavo – <span class="btnname">Įrašyti reisą</span>. Jei įrašė per klaidą – <span class="btnname">Atšaukti paskutinį reisą</span>.</li>
+    <li>Dienos pabaigoje – <span class="btnname">Baigti darbą</span>. Atsidaro <b>Dienos suvestinė</b>: reisai, km, tonos, pajamos. Spauskite <span class="btnname">Sukurti / dalintis PDF</span>, jei reikia nusiųsti ataskaitą.</li>
+  </ol>
+  <p>Visos dienos saugomos skiltyje <span class="btnname">Istorija</span>, o maršrutą matysite <span class="btnname">Žemėlapis</span>.</p>
+  <div class="tip">Programėlė veikia ir be interneto – reisai įrašomi telefone, o atsiradus ryšiui išsiunčiami.</div>
+</section>
+
+<section id="imone">
+  <h2>3. Vežėjo įmonė</h2>
+  <p>Viršininkas susikuria įmonę, prijungia vairuotojus ir mato visas mašinas žemėlapyje – telefone ir kompiuteryje.</p>
+  <h3>Pirmas nustatymas (~10 min.)</h3>
+  <ol>
+    <li>Programėlėje: <span class="btnname">Registruotis</span> → <span class="btnname">Įmonė</span>. Užpildykite duomenis.</li>
+    <li>Atidarykite <span class="btnname">Vairuotojai</span>. Viršuje matysite <b>įmonės kodą</b>, pvz. <code>KR-7F3K9Q</code>. Spauskite <span class="btnname">Dalintis</span> ir nusiųskite jį vairuotojams (SMS, Viber, WhatsApp).</li>
+    <li>Vairuotojui užsiregistravus su šiuo kodu, jis atsiras skiltyje <b>Laukia patvirtinimo</b> → spauskite <span class="btnname">Patvirtinti</span>.</li>
+    <li>Atidarykite <span class="btnname">Automobiliai</span> → įrašykite valstybinius numerius, <b>po vieną eilutėje</b> → <span class="btnname">Pridėti automobilius</span>.</li>
+    <li>Jei dirbsite karjeruose su ekskavatorininku – spauskite <span class="btnname">QR lipdukai automobiliams (PDF)</span>, atspausdinkite ir priklijuokite lipdukus ant priekinio stiklo.</li>
+  </ol>
+  <h3>Rolės</h3>
+  <p><span class="btnname">Vairuotojai</span> → prie žmogaus <span class="btnname">Keisti rolę</span>:</p>
+  <ul>
+    <li><b>Vairuotojas</b> – važiuoja, jo reisai skaičiuojami;</li>
+    <li><b>Dispečeris</b> – mato žemėlapį ir ataskaitas, bet nevairuoja ir nemoka už vietą;</li>
+    <li><b>Krovėjas (ekskavatorininkas)</b> – žymi pakrovimus karjere.</li>
+  </ul>
+  <h3>Kasdien</h3>
+  <ul>
+    <li><span class="btnname">Žemėlapis</span> – visos dirbančios mašinos gyvai: žalia – važiuoja, oranžinė – stovi, pilka – neaktyvi. Paspaudus mašiną matyti vairuotojas, reisai, tonos ir šiandienos maršrutas.</li>
+    <li>Kai vairuotojas baigia darbą, mašina iš žemėlapio dingsta – už darbo ribų vieta nerenkama.</li>
+    <li>Tą patį ir daugiau (ataskaitos, Excel) matysite <a href="#dispeceris">dispečerio centre</a> kompiuteryje.</li>
+  </ul>
+  <p>Vairuotojui išėjus iš darbo: <span class="btnname">Vairuotojai</span> → <span class="btnname">Pašalinti</span>. Jo seni reisai lieka ataskaitose, o mokestis sumažėja automatiškai.</p>
+</section>
+
+<section id="vairuotojas">
+  <h2>4. Vairuotojas įmonėje</h2>
+  <ol>
+    <li>Paprašykite viršininko <b>įmonės kodo</b> (<code>KR-…</code>).</li>
+    <li>Programėlėje: <span class="btnname">Registruotis</span> → <span class="btnname">Vairuotojas</span>. Įrašykite vardą, įmonės kodą, el. paštą ir slaptažodį.</li>
+    <li>Matysite „Laukiama viršininko patvirtinimo“. Kai viršininkas patvirtins, programėlė atsidarys pati.</li>
+    <li>Pirmą kartą perskaitykite, kokie duomenys renkami, ir spauskite <span class="btnname">Susipažinau</span>.</li>
+  </ol>
+  <h3>Darbo diena</h3>
+  <ol>
+    <li><span class="btnname">Pasirinkti automobilį</span> – kuriuo šiandien važiuojate.</li>
+    <li>Jei vežate rangovo objektui – <span class="btnname">Pasirinkti objektą (rangovo)</span>. Kitu atveju – „Be objekto“.</li>
+    <li><span class="btnname">Pradėti darbą</span>. Nuo šiol viršininkas mato jūsų mašiną žemėlapyje. Telefone matysite pranešimą „GPS ir reisų apskaita veikia“.</li>
+    <li>Kai ekskavatorininkas pažymi, kad jus pakrovė, ateina pranešimas <b>„Pakrauta“</b>. Spauskite <span class="btnname">Patvirtinti</span> arba, jei kažkas ne taip (pvz. ne ta medžiaga ar kiekis), <span class="btnname">Neatitinka</span> ir parašykite komentarą.</li>
+    <li>Dienos pabaigoje – <span class="btnname">Baigti darbą</span>. Nuo tada jūsų vieta nerenkama.</li>
+  </ol>
+  <p>Savo visus darbus galite atsisiųsti: <span class="btnname">Nustatymai</span> → <span class="btnname">Mano duomenys – atsisiųsti (Excel)</span>.</p>
+</section>
+
+<section id="dispeceris">
+  <h2>5. Dispečerio centras</h2>
+  <p>Atidarykite kompiuteryje <a href="https://karjieroreisai.web.app">karjieroreisai.web.app</a> ir prisijunkite <b>tuo pačiu el. paštu ir slaptažodžiu</b> kaip programėlėje. Prisijungti gali įmonės administratorius ir dispečeris.</p>
+  <ul>
+    <li><b>Žemėlapis</b> – visos mašinos gyvai; kairėje sąrašas, paspaudus – maršrutas ir reisai.</li>
+    <li><b>Objektai</b> – rangovų objektai: savo (jei esate rangovas) ir tie, kuriuose dirba jūsų mašinos.</li>
+    <li><b>Vairuotojai</b> – įmonės kodas, patvirtinimai, rolės. Oranžinis skaičius rodo, kiek laukia patvirtinimo.</li>
+    <li><b>Automobiliai</b> – numerių sąrašas ir QR lipdukai.</li>
+    <li><b>Istorija</b> – bet kurios dienos darbai ir maršrutai.</li>
+    <li><b>Ataskaitos</b> – reisai, tonos, km ir valandos pagal vairuotoją ar automobilį už pasirinktą laikotarpį; <b>Excel (CSV)</b> atsisiuntimas.</li>
+    <li><b>Įmonė</b> – pavadinimas, prenumerata, rekvizitai sąskaitoms, GPS duomenų saugojimas, išrašytos sąskaitos.</li>
+  </ul>
+  <p>Kalbą keiskite viršuje dešinėje.</p>
+</section>
+
+<section id="rangovas">
+  <h2>6. Rangovas ir objektai</h2>
+  <p>Rangovas (kelio, statybvietės vykdytojas) susikuria <b>objektą</b>, į jį prisijungia vežėjai, o ekskavatorininkas karjere žymi pakrovimus. Rangovas mato, kas kiek atvežė, ir gauna važtaraščius.</p>
+  <h3>Objekto sukūrimas</h3>
+  <ol>
+    <li>Susikurkite įmonės paskyrą programėlėje (<span class="btnname">Registruotis</span> → <span class="btnname">Įmonė</span>), jei jos dar neturite.</li>
+    <li>Kompiuteryje: <a href="https://karjieroreisai.web.app">dispečerio centras</a> → <span class="btnname">Objektai</span> → <span class="btnname">+ Naujas objektas</span>.</li>
+    <li>Užpildykite: pavadinimą, siuntėją ir gavėją (važtaraščiams), <b>karjerą</b> ir <b>iškrovimo vietą</b> – paspauskite žemėlapyje, <b>sutartą atstumą km</b>.</li>
+    <li>Medžiagos: pavadinimas, <b>tonos reisui</b> ir tankis (t/m³). Jei konkreti mašina veža kitą kiekį – eilutė <code>ABC123 = 20</code>.</li>
+    <li>Spauskite <span class="btnname">Sukurti kodą</span> → gausite <code>OB-…</code>. Nusiųskite jį vežėjams.</li>
+  </ol>
+  <h3>Vežėjų prijungimas</h3>
+  <ol>
+    <li>Vežėjas įveda kodą: programėlėje <span class="btnname">Objektai (rangovų)</span> → <span class="btnname">Prisijungti prie objekto</span> arba dispečerio centre <span class="btnname">Objektai</span>.</li>
+    <li>Jūs: objektas → skirtukas <span class="btnname">Vežėjai</span> → <span class="btnname">Patvirtinti</span>.</li>
+  </ol>
+  <h3>Ekskavatorininkas</h3>
+  <p>Ekskavatorininkas registruojasi kaip vairuotojas su <b>jūsų</b> įmonės kodu <code>KR-…</code>. Jūs jį patvirtinate ir <span class="btnname">Vairuotojai</span> → <span class="btnname">Keisti rolę</span> → <b>Krovėjas</b>.</p>
+  <h3>Objekto skirtukai</h3>
+  <ul>
+    <li><b>Pakrovimai</b> – suvestinė pagal vežėją, mašiną, medžiagą; <b>Excel</b>; <b>Važtaraščiai (PDF)</b>. Tonas ir km galite pataisyti mygtuku <span class="btnname">Keisti</span> – kiekvienas pakeitimas su priežastimi įrašomas į istoriją.</li>
+    <li><b>Mašinos dabar</b> – žemėlapis ir lentelė: kiek kiekviena mašina šiandien pakrauta ir kiek atliko reisų. <b style="color:#c62828">Raudona</b> – skaičiai nesutampa (galima klaida ar sukčiavimas).</li>
+    <li><b>Vežėjai</b> – patvirtinimai ir atjungimas.</li>
+    <li><b>Nustatymai</b> – objekto duomenys, medžiagos, tonos.</li>
+  </ul>
+  <div class="tip">Rangovas mato vežėjo mašiną <b>tik kol ji dirba jo objekte</b>. Kitų vežėjo darbų jis nemato.</div>
+</section>
+
+<section id="ekskavatorius">
+  <h2>7. Ekskavatorininkas</h2>
+  <p>Prisijungus programėlė iškart atsidaro <b>krovimo ekrane</b>. Mašiną galima pasirinkti trimis būdais:</p>
+  <ul>
+    <li><span class="btnname">🗺 Žemėlapis</span> – karjere esančios mašinos rodomos <b style="color:#2e7d32">žaliai</b>. Paspauskite numerį.</li>
+    <li><span class="btnname">📷 SKENUOTI QR</span> – nukreipkite telefoną į lipduką ant stiklo.</li>
+    <li><span class="btnname">☰ Sąrašas</span> arba <span class="btnname">Įvesti ranka</span>.</li>
+  </ul>
+  <ol>
+    <li>Pasirinkus mašiną atsidaro didelis žalias mygtukas <span class="btnname">PAKRAUTA</span>. Tonos įrašomos pagal rangovo nustatymus.</li>
+    <li>Jei pakrovėte ne pilną – įrašykite <b>Kitas kiekis, t</b>.</li>
+    <li>Vairuotojas gauna pranešimą ir patvirtina.</li>
+  </ol>
+  <p>Spalvos žemėlapyje: žalia – laukia krovimo, mėlyna – ką tik pakrauta, pilka – kelyje, raudona – nesutampa. Prie numerio rodoma <code>pakrauta/reisų</code>, pvz. <code>5/4</code> (viena mašina gali būti pakeliui – tai normalu).</p>
+  <p>Suklydote? Pakrovimą galima atšaukti per 15 min. Veikia ir be ryšio.</p>
+</section>
+
+<section id="saskaitos">
+  <h2>8. Sąskaitos faktūros</h2>
+  <p>Vežėjas gali išrašyti PVM sąskaitą faktūrą rangovui iš patvirtintų pakrovimų – vienu mygtuku.</p>
+  <ol>
+    <li>Dispečerio centras → <span class="btnname">Įmonė</span> → <b>Rekvizitai sąskaitoms</b>: įmonės pavadinimas (pvz. UAB „…“), įm. kodas, PVM kodas, adresas, IBAN, bankas, serija (pvz. <code>KR</code>) ir kitas numeris → <span class="btnname">Išsaugoti</span>. Tai daroma vieną kartą.</li>
+    <li><span class="btnname">Objektai</span> → <b>Objektai, kuriuose dirbu</b> → prie objekto <span class="btnname">Pakrovimai</span>.</li>
+    <li>Pasirinkite laikotarpį (pvz. <span class="btnname">Šis mėnuo</span>) → <span class="btnname">Rodyti</span> → <span class="btnname">🧾 Išrašyti sąskaitą faktūrą</span>.</li>
+    <li>Patikrinkite pirkėjo duomenis (įsimenami kitam kartui), pasirinkite įkainį: <b>už reisą</b>, <b>už toną</b> arba <b>už t·km</b>, įrašykite kainą ir PVM (21 % arba be PVM).</li>
+    <li>Apačioje matysite sumas. Spauskite <span class="btnname">Išrašyti ir išsaugoti</span> → atsidarys sąskaita. Spausdinkite arba išsaugokite kaip PDF ir siųskite rangovui.</li>
+  </ol>
+  <ul>
+    <li>Įtraukiami tik vairuotojų <b>patvirtinti</b> pakrovimai.</li>
+    <li>Numeris didėja automatiškai (KR-00001, KR-00002…).</li>
+    <li>Išrašytos sąskaitos pakeisti negalima. Visas rasite <span class="btnname">Įmonė</span> → <b>Sąskaitos faktūros</b> (galima atspausdinti dar kartą).</li>
+  </ul>
+  <div class="warn">Prieš pradėdami naudoti, parodykite vieną sąskaitą savo buhalteriui.</div>
+</section>
+
+<section id="prenumerata">
+  <h2>9. Prenumerata ir mokėjimai</h2>
+  <ul>
+    <li>Pirmos <b>30 dienų nemokamai</b>, kortelės nereikia.</li>
+    <li>Planai: vienam vairuotojui <b>5 €/mėn.</b> arba <b>55 €/metus</b>; įmonėms <b>3 € už vairuotoją per mėnesį</b> (nuo 3); rangovams <b>49 / 99 / 199 €/mėn.</b> (iki 10 / iki 30 / neribotai automobilių).</li>
+    <li>Kur mokėti: programėlėje <span class="btnname">Nustatymai</span> → <b>Prenumerata</b> arba dispečerio centre <span class="btnname">Įmonė</span> → <b>Prenumerata</b>. Pasirinkite planą → <span class="btnname">Mokėti kortele</span>.</li>
+    <li>Įmonės plane mokama tik už <b>vairuotojus</b> (ne dispečerius ir ne krovėjus). Pridėjus ar pašalinus vairuotoją, suma perskaičiuojama automatiškai.</li>
+    <li>Kortelę pakeisti, sąskaitas atsisiųsti ar atšaukti: <span class="btnname">Tvarkyti prenumeratą</span>.</li>
+    <li>Jei mokėjimas nepavyko, turite <b>7 dienas</b> pakeisti kortelę – tuo metu viskas veikia.</li>
+  </ul>
+  <p>Mokėjimus saugiai tvarko <b>Stripe</b> – kortelės numerio mes nematome ir nesaugome.</p>
+</section>
+
+<section id="duomenys">
+  <h2>10. Asmens duomenys</h2>
+  <ul>
+    <li>Vieta renkama <b>tik darbo metu</b> – nuo „Pradėti darbą“ iki „Baigti darbą“.</li>
+    <li>Tikslūs GPS taškai ištrinami automatiškai kas naktį, kai jie senesni nei <b>365 d.</b> Reisai, tonos ir km lieka ataskaitoms. Laiką keičia įmonė: dispečerio centras → <span class="btnname">Įmonė</span> → <b>GPS duomenų saugojimas</b> (nuo 30 d.).</li>
+    <li>Vairuotojas savo duomenis atsisiunčia: <span class="btnname">Nustatymai</span> → <span class="btnname">Mano duomenys</span>.</li>
+    <li>Daugiau: <a href="privacy.html">Privatumo politika</a> · <a href="delete-account.html">Paskyros ištrynimas</a>.</li>
+  </ul>
+</section>
+
+<section id="duk">
+  <h2>11. Dažni klausimai</h2>
+
+  <details><summary>Reisai nepasiskaičiuoja automatiškai</summary>
+    <ul>
+      <li>Ar pirmą kartą iškrovimo vietoje paspaudėte <b>Nustatyti B čia…</b>? Be taško B programėlė nežino, kur iškraunate.</li>
+      <li>Ar darbą pradėjote <b>karjere</b>? Taškas A yra ten, kur paspaudėte „Pradėti darbą“.</li>
+      <li>Patikrinkite leidimus: vieta – <b>tiksli</b>, baterija – <b>neribota</b> (žr. <a href="#idiegimas">Įdiegimas</a>).</li>
+      <li>Didelėje aikštelėje padidinkite <b>GPS zonos spindulį</b> iki 250–300 m.</li>
+      <li>Trūkstamą reisą visada galite įrašyti mygtuku <b>Įrašyti reisą</b>.</li>
+    </ul>
+  </details>
+
+  <details><summary>Mašinos nesimato žemėlapyje</summary>
+    <ul>
+      <li>Mašina rodoma tik kai vairuotojas yra paspaudęs <b>Pradėti darbą</b>.</li>
+      <li>Vairuotojas turi būti <b>patvirtintas</b> (Vairuotojai → Patvirtinti).</li>
+      <li>Jei telefone nėra interneto, vieta atsinaujins, kai atsiras ryšys. Vieta siunčiama maždaug kas minutę važiuojant ir kas 5 min. stovint.</li>
+    </ul>
+  </details>
+
+  <details><summary>Vairuotojas sako „Neteisingas įmonės kodas“</summary>
+    <p>Patikrinkite, ar kodas įvestas tiksliai (<code>KR-</code> ir 6 simboliai). Jei generavote naują kodą, senas nebegalioja – nusiųskite naują. Po 10 nesėkmingų bandymų reikia palaukti valandą.</p>
+  </details>
+
+  <details><summary>Pamiršau slaptažodį</summary>
+    <p>Prisijungimo lange įrašykite el. paštą ir spauskite <b>Pamiršau slaptažodį</b>. Gausite laišką (patikrinkite ir „Šlamšto“ aplanką).</p>
+  </details>
+
+  <details><summary>Pakeičiau telefoną</summary>
+    <p>Įdiekite programėlę naujame telefone ir prisijunkite <b>tuo pačiu el. paštu</b>. Įmonės duomenys lieka debesyje. Prieš keisdami telefoną, senajame <b>užbaikite darbą</b>.</p>
+  </details>
+
+  <details><summary>Raudona klaida „nesutampa“ pas ekskavatorininką ar rangovą</summary>
+    <p>Pakrovimų ir reisų skaičius skiriasi daugiau nei vienu. Dažniausios priežastys: vairuotojas nepradėjo darbo programėlėje, ekskavatorininkas pažymėjo ne tą mašiną, arba mašina išvažiavo nepakrauta. Pasiaiškinkite su vairuotoju; klaidingą pakrovimą ekskavatorininkas gali atšaukti per 15 min., vėliau rangovas – mygtuku <b>Keisti</b>.</p>
+  </details>
+
+  <details><summary>Ar veikia be interneto?</summary>
+    <p>Taip. Reisai ir pakrovimai įrašomi telefone ir išsiunčiami automatiškai, kai atsiranda ryšys. Tik žemėlapyje dispečeris mašinos tuo metu nematys.</p>
+  </details>
+
+  <details><summary>Ar yra iPhone versija?</summary>
+    <p>Kol kas tik Android. Dispečerio centras veikia bet kurioje naršyklėje – ir kompiuteryje, ir iPhone.</p>
+  </details>
+
+  <details><summary>Ar važtaraštis gali pakeisti popierinį?</summary>
+    <p>Tai patvirtinkite su rangovo buhalterija. Pradžioje rekomenduojame naudoti šalia popierinio.</p>
+  </details>
+</section>
+
+<section id="kontaktai">
+  <h2>Neradote atsakymo?</h2>
+  <p>Rašykite <a href="mailto:info.karjeroreisai@gmail.com">info.karjeroreisai@gmail.com</a> arba skambinkite <a href="tel:+37063922227">+370 639 22227</a>. Parašykite, ką darėte ir ką matote ekrane – geriausia su nuotrauka.</p>
+</section>
+
+</main>
+
+<footer>
+  © 2026 S. Meškėno įmonė · KarjeroReisai ·
+  <a href="index.html">Pradžia</a> · <a href="privacy.html">Privatumo politika</a> · <a href="terms.html">Naudojimo sąlygos</a>
+</footer>
+</body>
+</html>

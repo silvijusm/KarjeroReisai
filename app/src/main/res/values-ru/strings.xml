@@ -244,4 +244,8 @@
     <string name="privacy_accept">Ознакомлен(а)</string>
     <string name="my_data">Мои данные – скачать (Excel)</string>
     <string name="my_data_hint">Все ваши рабочие сессии и рейсы в этой компании (файл CSV).</string>
+    <string name="precise_location_needed">Включите ТОЧНОЕ местоположение (Настройки → Приложения → KarjeroReisai → Разрешения → Местоположение). С приблизительным местоположением маршрут рисуется прямыми линиями и рейсы не считаются.</string>
+    <string name="battery_hint">Чтобы GPS работал при выключенном экране, разрешите приложению работать без ограничений экономии батареи.</string>
+    <string name="help">❓ Помощь – как пользоваться</string>
+    <string name="map_estimated">Пунктир – не было GPS-сигнала, дорога показана приблизительно.</string>
 </resources>

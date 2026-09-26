@@ -124,7 +124,7 @@ fun rememberLiveVehicles(companyId: String?, enabled: Boolean): List<LiveVehicle
     return vehicles
 }
 
-private data class DayRoute(val lines: List<List<GeoPoint>>, val trips: List<GeoPoint>, val tripsCount: Int, val tonnes: Double, val km: Double)
+private data class DayRoute(val lines: List<List<GeoPoint>>, val estimated: List<List<GeoPoint>>, val trips: List<GeoPoint>, val tripsCount: Int, val tonnes: Double, val km: Double)
 
 /** Today's sessions of one driver with their route points. */
 private suspend fun loadDayRoute(companyId: String, driverUid: String): DayRoute {
@@ -162,7 +162,8 @@ private suspend fun loadDayRoute(companyId: String, driverUid: String): DayRoute
         }
         if (line.isNotEmpty()) lines += line
     }
-    return DayRoute(lines, trips, tripsCount, tonnes, km)
+    val filled = RoadFill.fill(lines)
+    return DayRoute(filled.solid, filled.estimated, trips, tripsCount, tonnes, km)
 }
 
 @Composable
@@ -206,6 +207,9 @@ fun DispatchScreen(auth: AuthUiState, vehicles: List<LiveVehicle>, onBack: () ->
             Text(stringResource(R.string.dispatch_map), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
         }
+        if (!route?.estimated.isNullOrEmpty()) {
+            Text(stringResource(R.string.map_estimated), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 12.dp))
+        }
         AndroidView(
             modifier = Modifier.fillMaxWidth().weight(1f),
             factory = { mapView },
@@ -216,6 +220,14 @@ fun DispatchScreen(auth: AuthUiState, vehicles: List<LiveVehicle>, onBack: () ->
                         setPoints(line)
                         outlinePaint.color = AColor.rgb(21, 101, 192)
                         outlinePaint.strokeWidth = 8f
+                    })
+                }
+                route?.estimated?.forEach { line ->
+                    map.overlays.add(Polyline().apply {
+                        setPoints(line)
+                        outlinePaint.color = AColor.rgb(21, 101, 192)
+                        outlinePaint.strokeWidth = 6f
+                        outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(18f, 14f), 0f)
                     })
                 }
                 route?.trips?.forEachIndexed { i, point ->

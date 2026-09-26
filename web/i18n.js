@@ -240,7 +240,9 @@ const D = {
   "nextNumber": "Kitas numeris",
   "retention": "GPS duomenų saugojimas",
   "retentionHint": "Senesni maršrutų taškai ištrinami automatiškai kiekvieną naktį. Reisai, tonos ir km lieka ataskaitoms. Mažiausiai 30 d.",
-  "daysWord": "d."
+  "daysWord": "d.",
+  "help": "Pagalba",
+  "mapEstimated": "Punktyras – GPS signalo nebuvo, kelias parodytas apytiksliai"
  },
  "en": {
   "loading": "Loading…",
@@ -481,7 +483,9 @@ const D = {
   "nextNumber": "Next number",
   "retention": "GPS data retention",
   "retentionHint": "Older route points are deleted automatically every night. Trips, tonnes and km stay for reports. Minimum 30 days.",
-  "daysWord": "days"
+  "daysWord": "days",
+  "help": "Help",
+  "mapEstimated": "Dashed – no GPS signal, road shown approximately"
  },
  "ru": {
   "loading": "Загрузка…",
@@ -722,7 +726,9 @@ const D = {
   "nextNumber": "Следующий номер",
   "retention": "Хранение GPS-данных",
   "retentionHint": "Более старые точки маршрута удаляются автоматически каждую ночь. Рейсы, тонны и км остаются для отчётов. Минимум 30 дн.",
-  "daysWord": "дн."
+  "daysWord": "дн.",
+  "help": "Помощь",
+  "mapEstimated": "Пунктир – не было GPS, дорога приблизительно"
  },
  "lv": {
   "loading": "Ielādē…",
@@ -963,7 +969,9 @@ const D = {
   "nextNumber": "Nākamais numurs",
   "retention": "GPS datu glabāšana",
   "retentionHint": "Vecāki maršruta punkti tiek dzēsti katru nakti. Min. 30 d.",
-  "daysWord": "d."
+  "daysWord": "d.",
+  "help": "Palīdzība",
+  "mapEstimated": "Raustīts – nebija GPS, ceļš aptuvens"
  },
  "et": {
   "loading": "Laadimine…",
@@ -1204,7 +1212,9 @@ const D = {
   "nextNumber": "Järgmine number",
   "retention": "GPS andmete säilitamine",
   "retentionHint": "Vanemad marsruudipunktid kustutatakse igal ööl. Min 30 päeva.",
-  "daysWord": "päeva"
+  "daysWord": "päeva",
+  "help": "Abi",
+  "mapEstimated": "Katkendjoon – GPS puudus, tee ligikaudne"
  },
  "pl": {
   "loading": "Ładowanie…",
@@ -1445,7 +1455,9 @@ const D = {
   "nextNumber": "Następny numer",
   "retention": "Przechowywanie danych GPS",
   "retentionHint": "Starsze punkty trasy są usuwane co noc. Min. 30 dni.",
-  "daysWord": "dni"
+  "daysWord": "dni",
+  "help": "Pomoc",
+  "mapEstimated": "Przerywana – brak GPS, droga przybliżona"
  }
 };
 let current = (() => {

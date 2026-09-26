@@ -41,6 +41,12 @@ class LocationTrackingService : Service() {
 
             val now = location.time.takeIf { it > 0L } ?: System.currentTimeMillis()
 
+            // Inaccurate fixes (cell/Wi-Fi) jump around and draw zig-zags across fields – skip them.
+            if (location.hasAccuracy() && location.accuracy > MAX_ROUTE_ACCURACY_M) {
+                processAutoCounting(location, now)
+                return
+            }
+
             db.addGpsPoint(
                 sessionId = sessionId,
                 timestamp = now,
@@ -102,8 +108,21 @@ class LocationTrackingService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
 
+        acquireWakeLock()
         startLocationUpdates()
         return START_STICKY
+    }
+
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+
+    /** Keeps the CPU awake during a work session so some phones do not pause GPS with the screen off. */
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        wakeLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "KarjeroReisai:work").apply {
+            setReferenceCounted(false)
+            acquire(14 * 60 * 60 * 1000L) // safety cap: 14 h
+        }
     }
 
     private fun startLocationUpdates() {
@@ -264,6 +283,7 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         fused.removeLocationUpdates(callback)
+        runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
         io.shutdown()
         runCatching { io.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS) }
         if (::db.isInitialized) db.close()
@@ -272,6 +292,7 @@ class LocationTrackingService : Service() {
 
     companion object {
         const val EXTRA_SESSION_ID = "extra_session_id"
+        const val MAX_ROUTE_ACCURACY_M = 50f
 
         const val PREFS = "location_tracking"
         const val KEY_HAS_LATEST = "has_latest"

@@ -244,4 +244,8 @@
     <string name="privacy_accept">Susipažinau</string>
     <string name="my_data">Mano duomenys – atsisiųsti (Excel)</string>
     <string name="my_data_hint">Visos jūsų darbo sesijos ir reisai šioje įmonėje (CSV failas).</string>
+    <string name="precise_location_needed">Įjunkite TIKSLIĄ vietą (Nustatymai → Programos → KarjeroReisai → Leidimai → Vieta). Su apytiksle vieta maršrutas rodomas tiesiomis linijomis ir reisai neskaičiuojami.</string>
+    <string name="battery_hint">Kad GPS veiktų ir užgesus ekranui, leiskite programėlei veikti be baterijos taupymo apribojimų.</string>
+    <string name="help">❓ Pagalba – kaip naudotis</string>
+    <string name="map_estimated">Punktyrinė linija – GPS signalo nebuvo, kelias parodytas apytiksliai.</string>
 </resources>
