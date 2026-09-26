@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -32,12 +35,15 @@ fun AuthScreen(
     state: AuthUiState,
     onSignIn: (String, String) -> Unit,
     onRegister: (String, String, String, String) -> Unit,
+    onRegisterDriver: (name: String, code: String, email: String, password: String) -> Unit,
     onResetPassword: (String) -> Unit,
     onClearError: () -> Unit
 ) {
     var registerMode by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("") }
     var companyName by rememberSaveable { mutableStateOf("") }
+    var driverMode by rememberSaveable { mutableStateOf(false) }
+    var companyCode by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -50,22 +56,53 @@ fun AuthScreen(
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
-        Text(if (registerMode) stringResource(R.string.create_company) else stringResource(R.string.sign_in))
+        Text(
+            when {
+                !registerMode -> stringResource(R.string.sign_in)
+                driverMode -> stringResource(R.string.register_as_driver)
+                else -> stringResource(R.string.create_company)
+            }
+        )
 
         if (registerMode) {
+            // Two kinds of accounts: a company (owner) or a driver joining an existing company.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val company = stringResource(R.string.register_as_company)
+                val driver = stringResource(R.string.register_as_driver_short)
+                if (driverMode) {
+                    OutlinedButton(onClick = { driverMode = false; onClearError() }, modifier = Modifier.weight(1f)) { Text(company) }
+                    Button(onClick = { }, modifier = Modifier.weight(1f)) { Text(driver) }
+                } else {
+                    Button(onClick = { }, modifier = Modifier.weight(1f)) { Text(company) }
+                    OutlinedButton(onClick = { driverMode = true; onClearError() }, modifier = Modifier.weight(1f)) { Text(driver) }
+                }
+            }
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.name)) },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
-                value = companyName,
-                onValueChange = { companyName = it },
-                label = { Text(stringResource(R.string.company_name)) },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(stringResource(R.string.trial_intro))
+            if (driverMode) {
+                OutlinedTextField(
+                    value = companyCode,
+                    onValueChange = { companyCode = it.uppercase() },
+                    label = { Text(stringResource(R.string.company_code)) },
+                    placeholder = { Text("KR-7F3K9Q") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(stringResource(R.string.company_code_hint))
+            } else {
+                OutlinedTextField(
+                    value = companyName,
+                    onValueChange = { companyName = it },
+                    label = { Text(stringResource(R.string.company_name)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(stringResource(R.string.trial_intro))
+            }
         }
 
         OutlinedTextField(
@@ -93,8 +130,11 @@ fun AuthScreen(
 
         Button(
             onClick = {
-                if (registerMode) onRegister(name, companyName, email, password)
-                else onSignIn(email, password)
+                when {
+                    !registerMode -> onSignIn(email, password)
+                    driverMode -> onRegisterDriver(name, companyCode, email, password)
+                    else -> onRegister(name, companyName, email, password)
+                }
             },
             enabled = !state.loading,
             modifier = Modifier.fillMaxWidth()
