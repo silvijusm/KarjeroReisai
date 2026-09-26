@@ -24,6 +24,9 @@ data class AuthUiState(
     val infoMessage: String? = null
 )
 
+/** Bandomojo laikotarpio trukmė. Turi sutapti su firestore.rules (TRIAL_MS). */
+const val TRIAL_DAYS = 30L
+
 class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private fun message(id: Int) = AppLanguage.wrap(getApplication()).getString(id)
     private var registering = false
@@ -98,7 +101,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 val companyRef = firestore.collection("companies").document()
                 val userRef = firestore.collection("users").document(user.uid)
                 val now = System.currentTimeMillis()
-                val trialEndsAt = now + 60L * 24L * 60L * 60L * 1000L
+                val trialEndsAt = now + TRIAL_DAYS * 24L * 60L * 60L * 1000L
 
                 val batch = firestore.batch()
                 batch.set(

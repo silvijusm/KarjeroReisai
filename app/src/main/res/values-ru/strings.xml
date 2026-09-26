@@ -12,7 +12,7 @@
     <string name="create_company">Создать аккаунт компании</string>
     <string name="name">Имя</string>
     <string name="company_name">Название компании</string>
-    <string name="trial_intro">Первые 60 дней — пробный период.</string>
+    <string name="trial_intro">Первые 30 дней — пробный период.</string>
     <string name="email">Эл. почта</string>
     <string name="password">Пароль</string>
     <string name="forgot_password">Забыли пароль</string>

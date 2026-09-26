@@ -12,7 +12,7 @@
     <string name="create_company">Loo ettevõtte konto</string>
     <string name="name">Nimi</string>
     <string name="company_name">Ettevõtte nimi</string>
-    <string name="trial_intro">Esimesed 60 päeva on prooviperiood.</string>
+    <string name="trial_intro">Esimesed 30 päeva on prooviperiood.</string>
     <string name="email">E-post</string>
     <string name="password">Parool</string>
     <string name="forgot_password">Unustasin parooli</string>

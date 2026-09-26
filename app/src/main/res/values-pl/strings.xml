@@ -12,7 +12,7 @@
     <string name="create_company">Utwórz konto firmy</string>
     <string name="name">Imię</string>
     <string name="company_name">Nazwa firmy</string>
-    <string name="trial_intro">Pierwsze 60 dni to okres próbny.</string>
+    <string name="trial_intro">Pierwsze 30 dni to okres próbny.</string>
     <string name="email">E-mail</string>
     <string name="password">Hasło</string>
     <string name="forgot_password">Nie pamiętam hasła</string>
