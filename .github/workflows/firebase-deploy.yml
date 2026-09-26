@@ -1,0 +1,49 @@
+name: Deploy Firebase (rules + member functions)
+
+# Manual only: GitHub → Actions → "Deploy Firebase" → Run workflow.
+# Needs repository secret FIREBASE_SERVICE_ACCOUNT (service account JSON key).
+# Stripe billing functions are NOT deployed here (stage 6).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Check that the key is configured
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT is missing. See docs/FIREBASE-DEPLOY.md"
+            exit 1
+          fi
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Deploy rules and member functions
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          KEYFILE="$RUNNER_TEMP/sa.json"
+          printf '%s' "$KEY" > "$KEYFILE"
+          chmod 600 "$KEYFILE"
+          export GOOGLE_APPLICATION_CREDENTIALS="$KEYFILE"
+          npm run deploy:members -- --non-interactive --force
+          rm -f "$KEYFILE"
+      - name: Remove key file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
