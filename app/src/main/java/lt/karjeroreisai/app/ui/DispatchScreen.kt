@@ -187,6 +187,7 @@ fun DispatchScreen(auth: AuthUiState, vehicles: List<LiveVehicle>, onBack: () ->
     Configuration.getInstance().userAgentValue = context.packageName
     val mapView = remember {
         MapView(context).apply {
+            setTilesScaledToDpi(true)
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             controller.setZoom(8.0)
@@ -204,8 +205,8 @@ fun DispatchScreen(auth: AuthUiState, vehicles: List<LiveVehicle>, onBack: () ->
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.dispatch_map), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Text(stringResource(R.string.dispatch_map), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
         if (!route?.estimated.isNullOrEmpty()) {
             Text(stringResource(R.string.map_estimated), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 12.dp))
@@ -317,13 +318,14 @@ private fun timeAgo(context: Context, now: Long, then: Long): String {
 /** Rounded label with the plate number, coloured by state. */
 internal fun labelBitmap(context: Context, text: String, color: Int): Bitmap {
     val density = context.resources.displayMetrics.density
+    val fontScale = context.resources.configuration.fontScale.coerceIn(1f, 1.6f)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 13f * density
+        textSize = 16f * density * fontScale
         this.color = AColor.WHITE
         isFakeBoldText = true
     }
-    val padH = 7f * density
-    val padV = 5f * density
+    val padH = 9f * density
+    val padV = 6f * density
     val width = (paint.measureText(text) + padH * 2).toInt().coerceAtLeast((24 * density).toInt())
     val height = (paint.textSize + padV * 2).toInt()
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)

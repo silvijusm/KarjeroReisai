@@ -231,8 +231,8 @@ fun TeamScreen(auth: AuthUiState, members: List<CompanyMember>, onBack: () -> Un
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.team), style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Text(stringResource(R.string.team), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (error) Text(stringResource(R.string.action_failed), color = MaterialTheme.colorScheme.error)
@@ -319,8 +319,8 @@ fun VehiclesScreen(auth: AuthUiState, vehicles: List<CompanyVehicle>, onBack: ()
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.vehicles), style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Text(stringResource(R.string.vehicles), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("← " + stringResource(R.string.back), maxLines = 1, softWrap = false) }
         }
         if (error) Text(stringResource(R.string.action_failed), color = MaterialTheme.colorScheme.error)
         if (isAdmin) {
