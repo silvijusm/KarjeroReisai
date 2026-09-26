@@ -1,9 +1,11 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { createMembersService } from './members.js';
 import { createRetentionService } from './retention.js';
+import { createAccountService } from './account.js';
 
 // Company membership: codes, join requests, approval, roles.
 // Separate codebase from billing so it deploys without Stripe secrets.
@@ -30,6 +32,22 @@ export const objectJoinCode = callable('objectJoinCode');
 export const joinObject = callable('joinObject');
 export const approveCarrier = callable('approveCarrier');
 export const removeCarrier = callable('removeCarrier');
+
+// "Delete my account" from the app (Google Play requirement).
+export const deleteAccount = onCall({ ...options, timeoutSeconds: 300 }, async request => {
+  try {
+    const db = getFirestore();
+    return await createAccountService({
+      db,
+      deleteTree: ref => db.recursiveDelete(ref),
+      deleteAuthUser: async uid => { try { await getAuth().deleteUser(uid); } catch (e) { if (e?.code !== 'auth/user-not-found') throw e; } },
+    }).deleteAccount(request.auth, request.data);
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    console.error('Account deletion failed', { code: typeof error.code === 'string' ? error.code : 'unknown' });
+    throw new HttpsError('internal', 'Please try again.');
+  }
+});
 
 // Every night: delete precise GPS points older than the company retention period.
 export const purgeOldLocations = onSchedule({ schedule: 'every day 03:30', timeZone: 'Europe/Vilnius', region: 'europe-west1', timeoutSeconds: 540 }, async () => {

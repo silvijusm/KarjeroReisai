@@ -248,4 +248,14 @@
     <string name="battery_hint">Lai GPS strādātu ar izslēgtu ekrānu, atļaujiet lietotnei darboties bez akumulatora ierobežojumiem.</string>
     <string name="help">❓ Palīdzība</string>
     <string name="map_estimated">Raustīta līnija – nebija GPS signāla, ceļš aptuvens.</string>
+    <string name="delete_account">Dzēst kontu</string>
+    <string name="delete_account_title">Dzēst kontu?</string>
+    <string name="delete_account_owner_text">Tiks dzēsts viss uzņēmums „%1$s“: darbinieki, automašīnas, reisi, maršruti, objekti, iekraušanas un rēķini. To nevarēs atsaukt.</string>
+    <string name="delete_account_member_text">Tiks dzēsts jūsu konts, pieteikšanās un atrašanās vieta. Veiktie reisi paliek „%1$s“ uzskaitē. To nevarēs atsaukt.</string>
+    <string name="delete_account_solo_text">Tiks dzēsts jūsu konts un dati šajā tālrunī. To nevarēs atsaukt.</string>
+    <string name="delete_account_type">Apstiprināšanai ierakstiet: %1$s</string>
+    <string name="delete_account_word">DZĒST</string>
+    <string name="delete_account_confirm">Dzēst neatgriezeniski</string>
+    <string name="delete_account_subscription">Vispirms atceliet abonementu.</string>
+    <string name="delete_account_done">Konts dzēsts.</string>
 </resources>

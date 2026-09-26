@@ -248,4 +248,14 @@
     <string name="battery_hint">To keep GPS working with the screen off, allow the app to run without battery restrictions.</string>
     <string name="help">❓ Help – how to use</string>
     <string name="map_estimated">Dashed line – no GPS signal, road shown approximately.</string>
+    <string name="delete_account">Delete account</string>
+    <string name="delete_account_title">Delete account?</string>
+    <string name="delete_account_owner_text">The whole company \"%1$s\" will be deleted: staff, vehicles, trips, routes, sites, loads and invoices. Drivers will lose access. This cannot be undone. Download reports and invoices first if you need them.</string>
+    <string name="delete_account_member_text">Your account, sign-in and location will be deleted. Trips and loads you completed stay in the records of \"%1$s\" – your employer keeps them. This cannot be undone.</string>
+    <string name="delete_account_solo_text">Your account, sign-in and the data on this phone will be deleted. This cannot be undone.</string>
+    <string name="delete_account_type">To confirm, type: %1$s</string>
+    <string name="delete_account_word">DELETE</string>
+    <string name="delete_account_confirm">Delete permanently</string>
+    <string name="delete_account_subscription">Cancel the subscription first: Manage subscription → Cancel. Then you can delete the account.</string>
+    <string name="delete_account_done">Account deleted.</string>
 </resources>

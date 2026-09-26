@@ -61,6 +61,7 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
                 OutlinedButton(onClick = onLogout, enabled = !working && !auth.loading, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.sign_out))
                 }
+                DeleteAccountButton(auth, working, onDeleted = onLogout)
             }
             androidx.compose.material3.TextButton(
                 onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://silvijusm.github.io/KarjeroReisai/site/pagalba.html"))) } },
@@ -214,4 +215,67 @@ private fun openStripeUrl(context: Context, url: String): Boolean {
     val uri = Uri.parse(url)
     if (uri.scheme != "https" || uri.host !in setOf("checkout.stripe.com", "billing.stripe.com", "dashboard.stripe.com") || uri.userInfo != null) return false
     return runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)); true }.getOrDefault(false)
+}
+
+
+/** Google Play: an account created in the app must be deletable from the app. */
+@Composable
+private fun DeleteAccountButton(auth: AuthUiState, working: Boolean, onDeleted: () -> Unit) {
+    val context = LocalContext.current
+    var open by remember { mutableStateOf(false) }
+    var typed by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val word = stringResource(R.string.delete_account_word)
+    val owner = auth.role == "company_admin" || auth.role == "super_admin"
+    val company = auth.companyName
+
+    TextButton(onClick = { typed = ""; error = null; open = true }, enabled = !working && !auth.loading, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.delete_account), color = MaterialTheme.colorScheme.error)
+    }
+    if (working && open) open = false
+    if (!open) return
+    AlertDialog(
+        onDismissRequest = { if (!busy) open = false },
+        title = { Text(stringResource(R.string.delete_account_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(when {
+                    owner -> stringResource(R.string.delete_account_owner_text, company)
+                    !auth.companyId.isNullOrBlank() -> stringResource(R.string.delete_account_member_text, company)
+                    else -> stringResource(R.string.delete_account_solo_text)
+                })
+                Text(stringResource(R.string.delete_account_type, word), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(typed, { typed = it }, singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !busy && typed.trim().equals(word, ignoreCase = true),
+                onClick = {
+                    busy = true; error = null
+                    FirebaseFunctions.getInstance("europe-west1").getHttpsCallable("deleteAccount")
+                        .call(mapOf("confirm" to true)).addOnCompleteListener { result ->
+                            busy = false
+                            if (result.isSuccessful) {
+                                open = false
+                                android.widget.Toast.makeText(context, context.getString(R.string.delete_account_done), android.widget.Toast.LENGTH_LONG).show()
+                                // Local trips on this phone go too.
+                                context.getSharedPreferences("location_tracking", Context.MODE_PRIVATE).edit().clear().apply()
+                                context.getSharedPreferences("cloud_sync", Context.MODE_PRIVATE).edit().clear().apply()
+                                onDeleted()
+                                context.deleteDatabase("karjero_reisai.db")
+                                context.activity()?.finishAffinity()
+                            } else {
+                                val e = result.exception as? com.google.firebase.functions.FirebaseFunctionsException
+                                error = context.getString(
+                                    if (e?.message == "subscription-active") R.string.delete_account_subscription else R.string.action_failed)
+                            }
+                        }
+                }
+            ) { Text(stringResource(R.string.delete_account_confirm), color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = { open = false }, enabled = !busy) { Text(stringResource(R.string.cancel)) } }
+    )
 }
