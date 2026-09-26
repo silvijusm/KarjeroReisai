@@ -310,7 +310,7 @@ fun ObjectPicker(links: List<ObjectLink>, selected: ObjectLink?, onSelect: (Obje
 // ---------------------------------------------------------------------------
 
 @Composable
-fun DriverLoadsPanel(carrierId: String?, contractorId: String?, objectId: String?, plate: String, since: Long) {
+fun DriverLoadsPanel(carrierId: String?, contractorId: String?, objectId: String?, plate: String, since: Long, trips: Int) {
     val context = LocalContext.current
     var loads by remember(objectId, plate) { mutableStateOf<List<LoadRecord>>(emptyList()) }
     var disputing by remember { mutableStateOf<LoadRecord?>(null) }
@@ -342,6 +342,9 @@ fun DriverLoadsPanel(carrierId: String?, contractorId: String?, objectId: String
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4EA))) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.loads_today, loads.size, "%.1f".format(loads.sumOf { it.tonnes })), fontWeight = FontWeight.Bold)
+            val check = loadCheck(loads.size, trips)
+            Text(stringResource(R.string.loads_vs_trips, loads.size, trips) + " – " + stringResource(loadCheckText(check)),
+                color = if (check.isError()) ERR_RED else OK_GREEN, fontWeight = FontWeight.Bold)
             loads.filter { it.status == "loaded" }.forEach { load ->
                 Text(stringResource(R.string.load_line, "%.1f".format(load.tonnes), load.material, hm(load.loadedAtMillis), load.loaderName))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -381,7 +384,35 @@ private fun hm(ms: Long) = SimpleDateFormat("HH:mm", Locale.getDefault()).format
 // Excavator operator (loader): one tap per load
 // ---------------------------------------------------------------------------
 
-private data class Candidate(val carrierId: String, val carrierName: String, val plate: String, val distanceM: Float?)
+private data class Candidate(
+    val carrierId: String, val carrierName: String, val plate: String, val distanceM: Float?,
+    val lat: Double? = null, val lng: Double? = null, val tripsCount: Int = 0
+)
+
+/**
+ * Loads (by the excavator) vs trips (counted by the driver's app).
+ * A truck may be one load ahead of its trips while driving to the unloading place;
+ * anything else means a load or a trip was missed.
+ */
+enum class LoadCheck { OK, IN_TRANSIT, MORE_LOADS, MORE_TRIPS }
+
+fun loadCheck(loads: Int, trips: Int): LoadCheck = when (loads - trips) {
+    0 -> LoadCheck.OK
+    1 -> LoadCheck.IN_TRANSIT
+    in 2..Int.MAX_VALUE -> LoadCheck.MORE_LOADS
+    else -> LoadCheck.MORE_TRIPS
+}
+
+fun loadCheckText(check: LoadCheck) = when (check) {
+    LoadCheck.OK -> R.string.check_ok
+    LoadCheck.IN_TRANSIT -> R.string.check_in_transit
+    LoadCheck.MORE_LOADS -> R.string.check_more_loads
+    LoadCheck.MORE_TRIPS -> R.string.check_more_trips
+}
+
+fun LoadCheck.isError() = this == LoadCheck.MORE_LOADS || this == LoadCheck.MORE_TRIPS
+private val OK_GREEN = Color(0xFF2E7D32)
+private val ERR_RED = Color(0xFFC62828)
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -393,6 +424,8 @@ fun LoaderScreen(auth: AuthUiState, onSettings: () -> Unit) {
     var objectId by remember { mutableStateOf(prefs.getString("objectId", null)) }
     var carriers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var nearby by remember { mutableStateOf<List<Candidate>>(emptyList()) }
+    // Trips counted today by each truck's app (also after the driver finished work).
+    var tripsByPlate by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var loads by remember { mutableStateOf<List<LoadRecord>>(emptyList()) }
     var chosen by remember { mutableStateOf<Candidate?>(null) }
     var material by remember { mutableStateOf<String?>(prefs.getString("material", null)) }
@@ -402,6 +435,7 @@ fun LoaderScreen(auth: AuthUiState, onSettings: () -> Unit) {
     var manualCarrier by remember { mutableStateOf<String?>(null) }
     var carrierMenu by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf<String?>(null) }
+    var mapMode by remember { mutableStateOf(prefs.getBoolean("mapMode", true)) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { delay(30_000L); now = System.currentTimeMillis() } }
 
@@ -428,6 +462,10 @@ fun LoaderScreen(auth: AuthUiState, onSettings: () -> Unit) {
         val r2 = ref.collection("live").addSnapshotListener { snap, f ->
             if (f != null || snap == null) return@addSnapshotListener
             val o = objects.firstOrNull { it.id == id }
+            val today = todayStartMillis()
+            tripsByPlate = snap.documents.filter { (it.getLong("startedAtMillis") ?: 0L) >= today }
+                .groupBy { it.getString("plate").orEmpty().uppercase() }
+                .mapValues { (_, docs) -> docs.sumOf { (it.getLong("tripsCount") ?: 0L).toInt() } }
             nearby = snap.documents.mapNotNull { d ->
                 val state = d.getString("state") ?: return@mapNotNull null
                 val updated = d.getLong("updatedAtMillis") ?: 0L
@@ -435,7 +473,8 @@ fun LoaderScreen(auth: AuthUiState, onSettings: () -> Unit) {
                 val lat = d.getDouble("lat"); val lng = d.getDouble("lng")
                 val dist = if (o?.quarryLat != null && o.quarryLng != null && lat != null && lng != null)
                     FloatArray(1).also { Location.distanceBetween(o.quarryLat, o.quarryLng, lat, lng, it) }[0] else null
-                Candidate(d.getString("carrierId").orEmpty(), d.getString("carrierName").orEmpty(), d.getString("plate").orEmpty(), dist)
+                Candidate(d.getString("carrierId").orEmpty(), d.getString("carrierName").orEmpty(), d.getString("plate").orEmpty(), dist,
+                    lat, lng, (d.getLong("tripsCount") ?: 0L).toInt())
             }.filter { it.plate.isNotBlank() && it.carrierId.isNotBlank() }
                 .sortedWith(compareBy({ it.distanceM ?: Float.MAX_VALUE }, { it.plate }))
         }
@@ -525,16 +564,33 @@ fun LoaderScreen(auth: AuthUiState, onSettings: () -> Unit) {
                     .setOrientationLocked(false).setPrompt(context.getString(R.string.scan_prompt)))
             }, modifier = Modifier.fillMaxWidth().height(80.dp)) { Text(stringResource(R.string.scan_qr), fontSize = 24.sp, fontWeight = FontWeight.Bold) }
 
-            Text(stringResource(R.string.vehicles_near), fontWeight = FontWeight.Bold)
-            if (nearby.isEmpty()) Text(stringResource(R.string.no_vehicles_near), style = MaterialTheme.typography.bodySmall)
-            nearby.forEach { cand ->
-                OutlinedButton(onClick = { chosen = cand; info = null }, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(cand.plate, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text(cand.distanceM?.let { if (it < 1000) "${it.toInt()} m" else "${"%.1f".format(it / 1000)} km" } ?: "", style = MaterialTheme.typography.bodySmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = mapMode, onClick = { mapMode = true; prefs.edit().putBoolean("mapMode", true).apply() }, label = { Text(stringResource(R.string.loader_mode_map)) })
+                FilterChip(selected = !mapMode, onClick = { mapMode = false; prefs.edit().putBoolean("mapMode", false).apply() }, label = { Text(stringResource(R.string.loader_mode_list)) })
+            }
+            val active = loads.filter { it.status != "cancelled" }
+            val loadsByPlate = active.groupBy { it.plate.uppercase() }
+            val recentlyLoaded = active.filter { now - it.loadedAtMillis < 10 * 60_000L }.map { it.plate.uppercase() }.toSet()
+            if (mapMode && obj != null) {
+                Text(stringResource(R.string.tap_to_load), style = MaterialTheme.typography.bodySmall)
+                LoaderMap(obj, nearby, loadsByPlate, recentlyLoaded) { chosen = it; info = null }
+                Text(stringResource(R.string.map_legend), style = MaterialTheme.typography.bodySmall)
+            } else {
+                Text(stringResource(R.string.vehicles_near), fontWeight = FontWeight.Bold)
+                if (nearby.isEmpty()) Text(stringResource(R.string.no_vehicles_near), style = MaterialTheme.typography.bodySmall)
+                nearby.forEach { cand ->
+                    val inQuarry = obj != null && cand.distanceM != null && cand.distanceM <= obj.quarryRadiusM
+                    OutlinedButton(onClick = { chosen = cand; info = null }, modifier = Modifier.fillMaxWidth().height(64.dp),
+                        colors = if (inQuarry && cand.plate.uppercase() !in recentlyLoaded) ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFE8F5E9)) else ButtonDefaults.outlinedButtonColors()) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(cand.plate, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            Text(cand.distanceM?.let { if (it < 1000) "${it.toInt()} m" else "${"%.1f".format(it / 1000)} km" } ?: "", style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }
+            // Loads vs trips per truck – mismatch shown as an error.
+            VehicleCheckTable(loadsByPlate, tripsByPlate)
             // Manual fallback: plate + carrier.
             Text(stringResource(R.string.manual_entry), fontWeight = FontWeight.Bold)
             OutlinedTextField(manualPlate, { manualPlate = it.uppercase() }, label = { Text(stringResource(R.string.truck)) },
@@ -566,6 +622,94 @@ fun LoaderScreen(auth: AuthUiState, onSettings: () -> Unit) {
                     TextButton(onClick = { objectRef(companyId, objectId!!).collection("loads").document(l.id).update("status", "cancelled") }) {
                         Text(stringResource(R.string.cancel))
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Map for the excavator operator: trucks at the quarry are green; tap one to register the load. */
+@Composable
+private fun LoaderMap(
+    obj: ObjectInfo,
+    trucks: List<Candidate>,
+    loadsByPlate: Map<String, List<LoadRecord>>,
+    recentlyLoaded: Set<String>,
+    onPick: (Candidate) -> Unit
+) {
+    val context = LocalContext.current
+    org.osmdroid.config.Configuration.getInstance().userAgentValue = context.packageName
+    val map = remember(obj.id) {
+        org.osmdroid.views.MapView(context).apply {
+            setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(if (obj.quarryLat != null) 15.5 else 8.0)
+            controller.setCenter(org.osmdroid.util.GeoPoint(obj.quarryLat ?: 55.3, obj.quarryLng ?: 23.9))
+            // Let the map, not the page, handle finger drags.
+            setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
+        }
+    }
+    DisposableEffect(map) { map.onResume(); onDispose { map.onPause(); map.onDetach() } }
+    androidx.compose.ui.viewinterop.AndroidView(
+        modifier = Modifier.fillMaxWidth().height(380.dp),
+        factory = { map },
+        update = { m ->
+            m.overlays.clear()
+            if (obj.quarryLat != null && obj.quarryLng != null) {
+                m.overlays.add(org.osmdroid.views.overlay.Polygon(m).apply {
+                    points = org.osmdroid.views.overlay.Polygon.pointsAsCircle(org.osmdroid.util.GeoPoint(obj.quarryLat, obj.quarryLng), obj.quarryRadiusM)
+                    fillPaint.color = android.graphics.Color.argb(40, 232, 116, 12)
+                    outlinePaint.color = android.graphics.Color.rgb(232, 116, 12)
+                    outlinePaint.strokeWidth = 4f
+                })
+            }
+            trucks.filter { it.lat != null && it.lng != null }.forEach { t ->
+                val plate = t.plate.uppercase()
+                val loaded = loadsByPlate[plate]?.size ?: 0
+                val check = loadCheck(loaded, t.tripsCount)
+                val inQuarry = t.distanceM != null && t.distanceM <= obj.quarryRadiusM
+                val color = when {
+                    check.isError() -> android.graphics.Color.rgb(198, 40, 40)
+                    plate in recentlyLoaded -> android.graphics.Color.rgb(21, 101, 192)
+                    inQuarry -> android.graphics.Color.rgb(46, 125, 50)
+                    else -> android.graphics.Color.rgb(117, 117, 117)
+                }
+                m.overlays.add(org.osmdroid.views.overlay.Marker(m).apply {
+                    position = org.osmdroid.util.GeoPoint(t.lat!!, t.lng!!)
+                    icon = android.graphics.drawable.BitmapDrawable(context.resources,
+                        labelBitmap(context, "${t.plate}  $loaded/${t.tripsCount}" + if (check.isError()) " !" else "", color))
+                    setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_BOTTOM)
+                    setOnMarkerClickListener { _, _ -> onPick(t); true }
+                })
+            }
+            m.invalidate()
+        }
+    )
+}
+
+/** Per truck today: loads registered vs trips counted – red when they do not match. */
+@Composable
+private fun VehicleCheckTable(loadsByPlate: Map<String, List<LoadRecord>>, tripsByPlate: Map<String, Int>) {
+    val plates = (loadsByPlate.keys + tripsByPlate.keys).filter { it.isNotBlank() }.sorted()
+    if (plates.isEmpty()) return
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.truck), Modifier.weight(1.3f), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.col_loaded), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.col_trips), Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                Text("", Modifier.weight(1.6f))
+            }
+            plates.forEach { plate ->
+                val loaded = loadsByPlate[plate]?.size ?: 0
+                val trips = tripsByPlate[plate] ?: 0
+                val check = loadCheck(loaded, trips)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(plate, Modifier.weight(1.3f), fontWeight = FontWeight.Bold)
+                    Text("$loaded", Modifier.weight(1f))
+                    Text("$trips", Modifier.weight(1f))
+                    Text(stringResource(loadCheckText(check)), Modifier.weight(1.6f),
+                        color = if (check.isError()) ERR_RED else OK_GREEN, fontWeight = if (check.isError()) FontWeight.Bold else FontWeight.Normal)
                 }
             }
         }

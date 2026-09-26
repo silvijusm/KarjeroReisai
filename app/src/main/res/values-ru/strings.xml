@@ -210,4 +210,15 @@
     <string name="change_role">Сменить роль</string>
     <string name="qr_stickers">QR-наклейки для машин (PDF)</string>
     <string name="qr_stickers_hint">Распечатайте и наклейте на лобовое стекло – экскаваторщик отсканирует.</string>
+    <string name="loader_mode_map">🗺 Карта</string>
+    <string name="loader_mode_list">☰ Список</string>
+    <string name="tap_to_load">Нажмите на номер машины – откроется ПОГРУЖЕНО.</string>
+    <string name="map_legend">Зелёный – в карьере, ждёт · Синий – только что погружен · Серый – в пути · Красный – не совпадает. Числа: погрузки / рейсы.</string>
+    <string name="col_loaded">Погружено</string>
+    <string name="col_trips">Рейсов</string>
+    <string name="check_ok">✓ Совпадает</string>
+    <string name="check_in_transit">✓ В пути</string>
+    <string name="check_more_loads">⚠ Погрузок больше, чем рейсов</string>
+    <string name="check_more_trips">⚠ Рейсов больше, чем погрузок</string>
+    <string name="loads_vs_trips">Погружено %1$d · Рейсов %2$d</string>
 </resources>

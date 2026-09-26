@@ -26,7 +26,11 @@
 
 ## Ekskavatorininkas (krovėjas)
 1. Programėlė atsidaro krovimo ekrane.
-2. **📷 SKENUOTI QR** (arba paspausti mašiną iš sąrašo „Mašinos prie karjero“, arba įvesti numerį ranka).
+2. Trys būdai pasirinkti mašiną:
+   - **🗺 Žemėlapis** – karjere esančios mašinos rodomos **žaliai**; paspaudus numerį atsidaro PAKRAUTA (mėlyna – ką tik pakrauta, pilka – kelyje, **raudona – nesutampa**);
+   - **📷 SKENUOTI QR** nuo stiklo;
+   - **☰ Sąrašas** arba numeris ranka.
+   Prie numerio rodoma `pakrauta/reisų` (pvz. `5/4`). Lentelė apačioje: jei pakrovimų ir reisų skaičius skiriasi daugiau nei 1 (viena mašina gali būti pakeliui) – **raudona klaida**. Tą patį mato rangovas (Objektai → Mašinos dabar) ir vairuotojas.
 3. Didelis žalias **PAKRAUTA** – tonos įrašomos pagal rangovo nustatymus. Veikia ir be ryšio.
 4. Klaidą galima atšaukti per 15 min.
 

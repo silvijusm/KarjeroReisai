@@ -126,25 +126,53 @@ function tabCarriers(body, object) {
   }));
 }
 
+// Loads vs trips: a truck may be one load ahead (driving to unload); otherwise it is an error.
+export function loadCheck(loads, trips) {
+  const d = loads - trips;
+  return d === 0 ? 'ok' : d === 1 ? 'transit' : d > 1 ? 'moreLoads' : 'moreTrips';
+}
+const isErr = c => c === 'moreLoads' || c === 'moreTrips';
+
 function tabLive(body, object) {
   const { h, t, state } = ctx;
   const el = h('div', { style: 'height:520px;border-radius:10px' });
   const list = h('div');
-  body.append(h('div', { class: 'card' }, el), h('div', { class: 'card' }, list));
-  omap = L.map(el).setView(object.quarryLat ? [object.quarryLat, object.quarryLng] : [55.3, 23.9], object.quarryLat ? 11 : 7);
+  body.append(h('div', { class: 'card' }, el, h('p', { class: 'muted' }, t('mapLegend'))), h('div', { class: 'card' }, h('h2', {}, t('loadsVsTrips')), list));
+  omap = L.map(el).setView(object.quarryLat ? [object.quarryLat, object.quarryLng] : [55.3, 23.9], object.quarryLat ? 13 : 7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(omap);
   const pts = L.layerGroup().addTo(omap);
   if (object.quarryLat) L.circle([object.quarryLat, object.quarryLng], { radius: object.quarryRadiusM || 300, color: '#e8740c' }).bindTooltip(object.quarryName || t('quarry')).addTo(omap);
   if (object.unloadLat) L.circle([object.unloadLat, object.unloadLng], { radius: object.unloadRadiusM || 300, color: '#2e7d32' }).bindTooltip(object.unloadName || t('unload')).addTo(omap);
-  unsub.push(onSnapshot(collection(ctx.db, 'companies', state.companyId, 'objects', object.id, 'live'), snap => {
+  let live = [], loads = [];
+  const today = ctx.dayStart(ctx.ymd(new Date()));
+  const draw = () => {
     const now = Date.now();
-    const rows = snap.docs.map(d => d.data()).filter(v => v.state !== 'offline' && now - (v.updatedAtMillis || 0) < 30 * 60000);
+    const byPlate = new Map();
+    loads.filter(l => l.status !== 'cancelled').forEach(l => { const k = String(l.plate).toUpperCase(); byPlate.set(k, [...(byPlate.get(k) || []), l]); });
+    const trips = new Map();
+    live.filter(v => (v.startedAtMillis || 0) >= today).forEach(v => { const k = String(v.plate).toUpperCase(); trips.set(k, (trips.get(k) || 0) + (v.tripsCount || 0)); });
+    const dist = v => object.quarryLat && v.lat != null ? L.latLng(v.lat, v.lng).distanceTo([object.quarryLat, object.quarryLng]) : Infinity;
     pts.clearLayers();
-    rows.forEach(v => { if (v.lat != null) L.marker([v.lat, v.lng], { icon: L.divIcon({ className: '', html: `<div class="plate" style="--c:${v.state === 'moving' ? '#2e7d32' : '#f57c00'}">${ctx.esc(v.plate)}</div>`, iconSize: null }) })
-      .bindTooltip(`${ctx.esc(v.plate)} · ${ctx.esc(v.carrierName || '')} · ${ctx.esc(v.driverName || '')}`).addTo(pts); });
-    list.replaceChildren(rows.length ? h('table', {}, h('tbody', {}, rows.map(v => h('tr', {}, h('td', {}, h('b', {}, v.plate)), h('td', {}, v.carrierName || ''), h('td', {}, v.driverName || ''),
-      h('td', {}, t('state_' + v.state)), h('td', { class: 'num' }, ctx.hhmm(v.updatedAtMillis)))))) : h('p', { class: 'muted' }, t('noLive')));
-  }));
+    live.filter(v => v.state !== 'offline' && now - (v.updatedAtMillis || 0) < 30 * 60000 && v.lat != null).forEach(v => {
+      const k = String(v.plate).toUpperCase(), n = (byPlate.get(k) || []).length, tr = trips.get(k) || 0, c = loadCheck(n, tr);
+      const recent = (byPlate.get(k) || []).some(l => now - l.loadedAtMillis < 10 * 60000);
+      const color = isErr(c) ? '#c62828' : recent ? '#1565c0' : dist(v) <= (object.quarryRadiusM || 300) ? '#2e7d32' : '#757575';
+      L.marker([v.lat, v.lng], { icon: L.divIcon({ className: '', html: `<div class="plate" style="--c:${color}">${ctx.esc(v.plate)} ${n}/${tr}${isErr(c) ? ' !' : ''}</div>`, iconSize: null }) })
+        .bindTooltip(`${ctx.esc(v.plate)} · ${ctx.esc(v.carrierName || '')} · ${ctx.esc(v.driverName || '')}<br>${t('colLoaded')} ${n} · ${t('colTrips')} ${tr} – ${t('check_' + c)}`).addTo(pts);
+    });
+    const plates = [...new Set([...byPlate.keys(), ...trips.keys()])].filter(Boolean).sort();
+    list.replaceChildren(plates.length ? h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, t('plate')), h('th', {}, t('group_carrierName')), h('th', { class: 'num' }, t('colLoaded')), h('th', { class: 'num' }, t('colTrips')), h('th', {}))),
+      h('tbody', {}, plates.map(p => {
+        const n = (byPlate.get(p) || []).length, tr = trips.get(p) || 0, c = loadCheck(n, tr);
+        const carrier = (byPlate.get(p) || [])[0]?.carrierName || live.find(v => String(v.plate).toUpperCase() === p)?.carrierName || '';
+        return h('tr', {}, h('td', {}, h('b', {}, p)), h('td', {}, carrier), h('td', { class: 'num' }, n), h('td', { class: 'num' }, tr),
+          h('td', { style: `color:${isErr(c) ? 'var(--err)' : 'var(--ok)'};font-weight:${isErr(c) ? 700 : 400}` }, t('check_' + c)));
+      }))) : h('p', { class: 'muted' }, t('noLive')));
+  };
+  unsub.push(onSnapshot(collection(ctx.db, 'companies', state.companyId, 'objects', object.id, 'live'), snap => { live = snap.docs.map(d => d.data()); draw(); }));
+  unsub.push(onSnapshot(query(collection(ctx.db, 'companies', state.companyId, 'objects', object.id, 'loads'), where('loadedAtMillis', '>=', today)), snap => { loads = snap.docs.map(d => d.data()); draw(); }));
+  const tick = setInterval(draw, 30000);
+  unsub.push(() => clearInterval(tick));
 }
 
 // ---------- loads, summaries, edits, waybills ----------

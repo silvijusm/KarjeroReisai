@@ -180,7 +180,15 @@ const D = {
   "waybillSeries": "Važtaraščio serija",
   "waybillTitle": "Krovinio važtaraštis",
   "waybills": "Važtaraščiai (PDF)",
-  "wrongObjectCode": "Neteisingas objekto kodas."
+  "wrongObjectCode": "Neteisingas objekto kodas.",
+  "mapLegend": "Žalia – karjere, laukia krovimo · Mėlyna – ką tik pakrauta · Pilka – kelyje · Raudona – nesutampa. Skaičiai: pakrauta / reisų.",
+  "loadsVsTrips": "Šiandien: pakrauta ir reisų",
+  "colLoaded": "Pakrauta",
+  "colTrips": "Reisų",
+  "check_ok": "✓ Sutampa",
+  "check_transit": "✓ Vežama",
+  "check_moreLoads": "⚠ Pakrovimų daugiau nei reisų",
+  "check_moreTrips": "⚠ Reisų daugiau nei pakrovimų"
  },
  "en": {
   "loading": "Loading…",
@@ -361,7 +369,15 @@ const D = {
   "waybillSeries": "Waybill series",
   "waybillTitle": "Cargo waybill",
   "waybills": "Waybills (PDF)",
-  "wrongObjectCode": "Wrong site code."
+  "wrongObjectCode": "Wrong site code.",
+  "mapLegend": "Green – at quarry · Blue – just loaded · Grey – on the road · Red – mismatch. Numbers: loads / trips.",
+  "loadsVsTrips": "Today: loads and trips",
+  "colLoaded": "Loaded",
+  "colTrips": "Trips",
+  "check_ok": "✓ Matches",
+  "check_transit": "✓ On the way",
+  "check_moreLoads": "⚠ More loads than trips",
+  "check_moreTrips": "⚠ More trips than loads"
  },
  "ru": {
   "loading": "Загрузка…",
@@ -542,7 +558,15 @@ const D = {
   "waybillSeries": "Серия накладной",
   "waybillTitle": "Товарно-транспортная накладная",
   "waybills": "Накладные (PDF)",
-  "wrongObjectCode": "Неверный код объекта."
+  "wrongObjectCode": "Неверный код объекта.",
+  "mapLegend": "Зелёный – в карьере · Синий – только что погружен · Серый – в пути · Красный – не совпадает. Числа: погрузки / рейсы.",
+  "loadsVsTrips": "Сегодня: погрузки и рейсы",
+  "colLoaded": "Погружено",
+  "colTrips": "Рейсов",
+  "check_ok": "✓ Совпадает",
+  "check_transit": "✓ В пути",
+  "check_moreLoads": "⚠ Погрузок больше, чем рейсов",
+  "check_moreTrips": "⚠ Рейсов больше, чем погрузок"
  },
  "lv": {
   "loading": "Ielādē…",
@@ -723,7 +747,15 @@ const D = {
   "waybillSeries": "Pavadzīmes sērija",
   "waybillTitle": "Kravas pavadzīme",
   "waybills": "Pavadzīmes (PDF)",
-  "wrongObjectCode": "Nepareizs kods."
+  "wrongObjectCode": "Nepareizs kods.",
+  "mapLegend": "Zaļš – karjerā · Zils – tikko iekrauts · Pelēks – ceļā · Sarkans – neatbilst.",
+  "loadsVsTrips": "Šodien: iekraušanas un reisi",
+  "colLoaded": "Iekrauts",
+  "colTrips": "Reisi",
+  "check_ok": "✓ Sakrīt",
+  "check_transit": "✓ Ceļā",
+  "check_moreLoads": "⚠ Iekraušanu vairāk nekā reisu",
+  "check_moreTrips": "⚠ Reisu vairāk nekā iekraušanu"
  },
  "et": {
   "loading": "Laadimine…",
@@ -904,7 +936,15 @@ const D = {
   "waybillSeries": "Saatelehe seeria",
   "waybillTitle": "Kauba saateleht",
   "waybills": "Saatelehed (PDF)",
-  "wrongObjectCode": "Vale kood."
+  "wrongObjectCode": "Vale kood.",
+  "mapLegend": "Roheline – karjääris · Sinine – just laaditud · Hall – teel · Punane – ei klapi.",
+  "loadsVsTrips": "Täna: laadimised ja reisid",
+  "colLoaded": "Laaditud",
+  "colTrips": "Reisid",
+  "check_ok": "✓ Klapib",
+  "check_transit": "✓ Teel",
+  "check_moreLoads": "⚠ Laadimisi rohkem kui reise",
+  "check_moreTrips": "⚠ Reise rohkem kui laadimisi"
  },
  "pl": {
   "loading": "Ładowanie…",
@@ -1085,7 +1125,15 @@ const D = {
   "waybillSeries": "Seria listu",
   "waybillTitle": "List przewozowy",
   "waybills": "Listy przewozowe (PDF)",
-  "wrongObjectCode": "Nieprawidłowy kod."
+  "wrongObjectCode": "Nieprawidłowy kod.",
+  "mapLegend": "Zielony – w kopalni · Niebieski – załadowany · Szary – w drodze · Czerwony – niezgodność.",
+  "loadsVsTrips": "Dziś: załadunki i kursy",
+  "colLoaded": "Załadowano",
+  "colTrips": "Kursy",
+  "check_ok": "✓ Zgadza się",
+  "check_transit": "✓ W drodze",
+  "check_moreLoads": "⚠ Więcej załadunków niż kursów",
+  "check_moreTrips": "⚠ Więcej kursów niż załadunków"
  }
 };
 let current = (() => {

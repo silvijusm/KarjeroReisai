@@ -303,7 +303,7 @@ private fun timeAgo(context: Context, now: Long, then: Long): String {
 }
 
 /** Rounded label with the plate number, coloured by state. */
-private fun labelBitmap(context: Context, text: String, color: Int): Bitmap {
+internal fun labelBitmap(context: Context, text: String, color: Int): Bitmap {
     val density = context.resources.displayMetrics.density
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 13f * density
