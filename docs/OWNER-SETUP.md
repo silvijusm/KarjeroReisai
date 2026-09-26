@@ -21,7 +21,16 @@ npm run provision-admin -- --email SAVININKO_EL_PASTAS --project karjieroreisai 
 
 Įrankis atsisako suteikti teises, jei nurodyta paskyra nėra esamos įmonės savininkas. Po pakeitimo atsijunkite ir prisijunkite programėlėje iš naujo. Nustatymuose atsiras administratoriaus skiltis.
 
-## 2. Stripe mokėjimai
+## 2. Stripe mokėjimai (automatinis įdiegimas)
+
+Dabar viskas diegiama mygtuku GitHub → Actions → **Deploy Firebase**, kai yra:
+- GitHub secret `STRIPE_SECRET_KEY` (sandbox: `sk_test_…`, vėliau live: `sk_live_…`);
+- paslaugos paskyrai `firebase-adminsdk-…` pridėta rolė **Secret Manager Admin**.
+
+Scenarijus pats: išsaugo raktą Secret Manager, sukuria Stripe webhook (`…/stripeWebhook`) ir jo slaptą raktą, sukonfigūruoja kliento portalą, įjungia mokėjimus (`BILLING_ENABLED=true`).
+Kainos randamos pagal `lookup_key` (`karjeroreisai_monthly`, `_yearly`, `_company_per_driver`, `_contractor_small/medium/large`) – pereinant į live užtenka live aplinkoje sukurti tas pačias kainas su tais pačiais lookup_key ir pakeisti GitHub secret. Pakeitus raktą į live, ištrinkite senąjį `STRIPE_WEBHOOK_SECRET` (Google Cloud → Secret Manager), kad būtų sukurtas naujas live webhook.
+
+### Rankinis būdas (senas aprašas)
 
 Mokėjimai kode yra išjungti pagal nutylėjimą. Prieš įjungiant realius atsiskaitymus reikia:
 

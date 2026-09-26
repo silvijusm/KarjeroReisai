@@ -246,7 +246,11 @@ async function pageDrivers(main) {
   const page = h('div', { class: 'page' });
   main.append(page);
   const msg = h('div', { class: 'err' });
-  const act = async (name, data) => { msg.textContent = ''; try { await call(name, data); } catch (e) { console.error(e); msg.textContent = t('actionFailed'); } };
+  const act = async (name, data) => {
+    msg.textContent = '';
+    try { await call(name, data); call('syncSeats').catch(() => {}); } // company plan: bill the new driver count
+    catch (e) { console.error(e); msg.textContent = t('actionFailed'); }
+  };
   if (isAdmin()) {
     const codeEl = h('div', { class: 'code' }, '…');
     const card = h('div', { class: 'card' }, h('h2', {}, t('companyCode')), codeEl, h('p', { class: 'muted' }, t('codeHint')),
@@ -415,6 +419,36 @@ function pageReports(main) {
   run();
 }
 
+// ---------- subscription ----------
+const BPLANS = ['monthly', 'yearly', 'company', 'contractor_small', 'contractor_medium', 'contractor_large'];
+function billingCard(c, trial) {
+  const card = h('div', { class: 'card' }, h('h2', {}, t('subscription')), h('p', {}, t('plan_' + (c.plan || 'inactive')), trial ? ` · ${trial}` : ''),
+    c.billingPlan ? h('p', {}, t('bplan_' + c.billingPlan), c.seats ? ` · ${t('seatsBilled', c.seats)}` : '') : null,
+    c.graceUntilMillis ? h('p', { class: 'err' }, t('paymentGrace', new Date(c.graceUntilMillis).toLocaleDateString(lang()))) : null);
+  if (!(isAdmin() && c.ownerUid === state.user.uid)) { card.append(h('p', { class: 'muted' }, t('viewOnly'))); return card; }
+  const body = h('div', { class: 'muted' }, t('loading'));
+  card.append(body);
+  call('billingStatus').then(st => {
+    if (!st.enabled) { body.replaceChildren(t('billingInApp')); return; }
+    body.className = '';
+    const msg = h('span', { class: 'err' });
+    const open = async (name, data) => {
+      msg.textContent = '';
+      try { const r = await call(name, data); if (/^https:\/\/(checkout|billing)\.stripe\.com\//.test(r.url)) location.href = r.url; else msg.textContent = t('actionFailed'); }
+      catch (e) { console.error(e); msg.textContent = t('actionFailed'); }
+    };
+    if (st.hasSubscription) {
+      body.replaceChildren(h('div', { class: 'row' }, h('button', { class: 'blue', onclick: () => open('createBillingPortal') }, t('manageSubscription')), msg));
+    } else {
+      let plan = 'company';
+      body.replaceChildren(h('div', {}, BPLANS.map(p => h('label', { style: 'display:block;margin:4px 0' },
+        h('input', { type: 'radio', name: 'bplan', value: p, checked: p === plan, onchange: () => { plan = p; } }), ' ', t('bplan_' + p)))),
+        h('div', { class: 'row', style: 'margin-top:8px' }, h('button', { class: 'primary', onclick: () => open('createCheckout', { plan }) }, t('payCard')), msg));
+    }
+  }).catch(() => body.replaceChildren(t('billingInApp')));
+  return card;
+}
+
 // ---------- company ----------
 function pageCompany(main) {
   const page = h('div', { class: 'page' });
@@ -428,8 +462,7 @@ function pageCompany(main) {
       try { await updateDoc(doc(db, 'companies', state.companyId), { name: name.value.trim() }); state.company.name = name.value.trim(); msg.textContent = t('saved'); }
       catch { msg.textContent = t('actionFailed'); }
     } }, t('save')) : null, msg)),
-    h('div', { class: 'card' }, h('h2', {}, t('subscription')), h('p', {}, t('plan_' + (c.plan || 'inactive')), trial ? ` · ${trial}` : ''),
-      h('p', { class: 'muted' }, t('billingInApp'))),
+    billingCard(c, trial),
     h('div', { class: 'card' }, h('h2', {}, t('mobileApp')), h('p', {}, t('mobileHint')),
       h('a', { href: 'https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk' }, t('downloadApk'))));
 }

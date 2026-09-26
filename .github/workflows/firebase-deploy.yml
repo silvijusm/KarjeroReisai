@@ -37,6 +37,7 @@ jobs:
       - name: Deploy rules and member functions
         env:
           KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
         run: |
           KEYFILE="$RUNNER_TEMP/sa.json"
           printf '%s' "$KEY" > "$KEYFILE"

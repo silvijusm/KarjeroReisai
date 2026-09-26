@@ -188,7 +188,17 @@ const D = {
   "check_ok": "✓ Sutampa",
   "check_transit": "✓ Vežama",
   "check_moreLoads": "⚠ Pakrovimų daugiau nei reisų",
-  "check_moreTrips": "⚠ Reisų daugiau nei pakrovimų"
+  "check_moreTrips": "⚠ Reisų daugiau nei pakrovimų",
+  "bplan_monthly": "Mėnesio – 5 €/mėn.",
+  "bplan_yearly": "Metinė – 55 €/metus",
+  "bplan_company": "Įmonėms – 3 €/vairuotojui/mėn. (nuo 3)",
+  "bplan_contractor_small": "Rangovas: iki 10 aut. – 49 €/mėn.",
+  "bplan_contractor_medium": "Rangovas: iki 30 aut. – 99 €/mėn.",
+  "bplan_contractor_large": "Rangovas: neribotai – 199 €/mėn.",
+  "seatsBilled": "apmokama vairuotojų: {0}",
+  "paymentGrace": "Mokėjimas nepavyko. Pakeiskite kortelę iki {0}, kitaip naujų darbų pradėti nebus galima.",
+  "manageSubscription": "Tvarkyti prenumeratą (kortelė, sąskaitos, atšaukimas)",
+  "payCard": "Mokėti kortele"
  },
  "en": {
   "loading": "Loading…",
@@ -377,7 +387,17 @@ const D = {
   "check_ok": "✓ Matches",
   "check_transit": "✓ On the way",
   "check_moreLoads": "⚠ More loads than trips",
-  "check_moreTrips": "⚠ More trips than loads"
+  "check_moreTrips": "⚠ More trips than loads",
+  "bplan_monthly": "Monthly – €5/month",
+  "bplan_yearly": "Yearly – €55/year",
+  "bplan_company": "Company – €3/driver/month (min. 3)",
+  "bplan_contractor_small": "Contractor: up to 10 trucks – €49/month",
+  "bplan_contractor_medium": "Contractor: up to 30 trucks – €99/month",
+  "bplan_contractor_large": "Contractor: unlimited – €199/month",
+  "seatsBilled": "drivers billed: {0}",
+  "paymentGrace": "Payment failed. Update your card by {0}.",
+  "manageSubscription": "Manage subscription (card, invoices, cancel)",
+  "payCard": "Pay by card"
  },
  "ru": {
   "loading": "Загрузка…",
@@ -566,7 +586,17 @@ const D = {
   "check_ok": "✓ Совпадает",
   "check_transit": "✓ В пути",
   "check_moreLoads": "⚠ Погрузок больше, чем рейсов",
-  "check_moreTrips": "⚠ Рейсов больше, чем погрузок"
+  "check_moreTrips": "⚠ Рейсов больше, чем погрузок",
+  "bplan_monthly": "Месячная – 5 €/мес.",
+  "bplan_yearly": "Годовая – 55 €/год",
+  "bplan_company": "Компаниям – 3 €/водителя/мес. (от 3)",
+  "bplan_contractor_small": "Подрядчик: до 10 авто – 49 €/мес.",
+  "bplan_contractor_medium": "Подрядчик: до 30 авто – 99 €/мес.",
+  "bplan_contractor_large": "Подрядчик: без ограничений – 199 €/мес.",
+  "seatsBilled": "оплачивается водителей: {0}",
+  "paymentGrace": "Платёж не прошёл. Обновите карту до {0}.",
+  "manageSubscription": "Управление подпиской (карта, счета, отмена)",
+  "payCard": "Оплатить картой"
  },
  "lv": {
   "loading": "Ielādē…",
@@ -755,7 +785,17 @@ const D = {
   "check_ok": "✓ Sakrīt",
   "check_transit": "✓ Ceļā",
   "check_moreLoads": "⚠ Iekraušanu vairāk nekā reisu",
-  "check_moreTrips": "⚠ Reisu vairāk nekā iekraušanu"
+  "check_moreTrips": "⚠ Reisu vairāk nekā iekraušanu",
+  "bplan_monthly": "Mēneša – 5 €/mēn.",
+  "bplan_yearly": "Gada – 55 €/gadā",
+  "bplan_company": "Uzņēmumiem – 3 €/vadītājam/mēn.",
+  "bplan_contractor_small": "Būvuzņēmējs: līdz 10 – 49 €/mēn.",
+  "bplan_contractor_medium": "Būvuzņēmējs: līdz 30 – 99 €/mēn.",
+  "bplan_contractor_large": "Būvuzņēmējs: neierobežoti – 199 €/mēn.",
+  "seatsBilled": "apmaksāti vadītāji: {0}",
+  "paymentGrace": "Maksājums neizdevās. Atjauniniet karti līdz {0}.",
+  "manageSubscription": "Pārvaldīt abonementu",
+  "payCard": "Maksāt ar karti"
  },
  "et": {
   "loading": "Laadimine…",
@@ -944,7 +984,17 @@ const D = {
   "check_ok": "✓ Klapib",
   "check_transit": "✓ Teel",
   "check_moreLoads": "⚠ Laadimisi rohkem kui reise",
-  "check_moreTrips": "⚠ Reise rohkem kui laadimisi"
+  "check_moreTrips": "⚠ Reise rohkem kui laadimisi",
+  "bplan_monthly": "Kuu – 5 €/kuu",
+  "bplan_yearly": "Aasta – 55 €/aasta",
+  "bplan_company": "Ettevõttele – 3 €/juht/kuu",
+  "bplan_contractor_small": "Töövõtja: kuni 10 – 49 €/kuu",
+  "bplan_contractor_medium": "Töövõtja: kuni 30 – 99 €/kuu",
+  "bplan_contractor_large": "Töövõtja: piiramatult – 199 €/kuu",
+  "seatsBilled": "arveldatud juhte: {0}",
+  "paymentGrace": "Makse ebaõnnestus. Uuendage kaarti enne {0}.",
+  "manageSubscription": "Halda tellimust",
+  "payCard": "Maksa kaardiga"
  },
  "pl": {
   "loading": "Ładowanie…",
@@ -1133,7 +1183,17 @@ const D = {
   "check_ok": "✓ Zgadza się",
   "check_transit": "✓ W drodze",
   "check_moreLoads": "⚠ Więcej załadunków niż kursów",
-  "check_moreTrips": "⚠ Więcej kursów niż załadunków"
+  "check_moreTrips": "⚠ Więcej kursów niż załadunków",
+  "bplan_monthly": "Miesięczna – 5 €/mies.",
+  "bplan_yearly": "Roczna – 55 €/rok",
+  "bplan_company": "Firmy – 3 €/kierowcę/mies.",
+  "bplan_contractor_small": "Wykonawca: do 10 – 49 €/mies.",
+  "bplan_contractor_medium": "Wykonawca: do 30 – 99 €/mies.",
+  "bplan_contractor_large": "Wykonawca: bez limitu – 199 €/mies.",
+  "seatsBilled": "opłacani kierowcy: {0}",
+  "paymentGrace": "Płatność nieudana. Zaktualizuj kartę do {0}.",
+  "manageSubscription": "Zarządzaj subskrypcją",
+  "payCard": "Zapłać kartą"
  }
 };
 let current = (() => {

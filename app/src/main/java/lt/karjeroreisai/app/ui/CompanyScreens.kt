@@ -185,7 +185,11 @@ fun TeamScreen(auth: AuthUiState, members: List<CompanyMember>, onBack: () -> Un
         error = false
         functions().getHttpsCallable(name).call(data).addOnCompleteListener { result ->
             busy = false
-            if (result.isSuccessful) onOk(result.result.data as? Map<*, *>) else error = true
+            if (result.isSuccessful) {
+                onOk(result.result.data as? Map<*, *>)
+                // Company plan: bill the new number of drivers (ignored while payments are off).
+                if (name in setOf("approveMember", "removeMember", "setMemberRole")) functions().getHttpsCallable("syncSeats").call()
+            } else error = true
         }
     }
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Stripe from 'stripe';
-import { assertOwner, safeReturnUrl, subscriptionPlan, createBillingService } from '../billing.js';
+import { assertOwner, safeReturnUrl, subscriptionPlan, createBillingService, PLANS, GRACE_MS } from '../billing.js';
 
 // In-memory Firestore adapter keeps tests at the billing boundary, without any
 // production account, network calls, money movement or real credentials.
@@ -18,16 +18,28 @@ function fixture(config = {}) {
   const db = { doc,
     async runTransaction(fn) { return fn({ get: ref => ref.get(), set: (ref, ...args) => ref.set(...args) }); },
     batch() { const writes = []; return { set: (...args) => writes.push(args), async commit() { for (const [ref, ...args] of writes) await ref.set(...args); } }; },
-    collection(collection) { return { where(field, op, value) { return { limit() { return { async get() {
-      const paths = [...data.keys()].filter(p => p.startsWith(collection + '/') && data.get(p)?.[field] === value);
-      return { size: paths.length, docs: paths.map(p => ({ ref: doc(p) })) };
-    } }; } }; } }; },
+    collection(collection) {
+      const q = filters => ({
+        where: (field, op, value) => q([...filters, [field, value]]),
+        limit: () => q(filters),
+        async get() {
+          const depth = collection.split('/').length + 1;
+          const paths = [...data.keys()].filter(p => p.startsWith(collection + '/') && p.split('/').length === depth
+            && filters.every(([f, v]) => data.get(p)?.[f] === v));
+          return { size: paths.length, docs: paths.map(p => ({ ref: doc(p), data: () => data.get(p) })) };
+        },
+      });
+      return q([]);
+    },
   };
   let current = [];
   let checkoutCalls = 0;
   const sessions = new Map();
+  const itemUpdates = [];
   const stripe = {
     customers: { create: async () => ({ id: 'cus_test' }) },
+    prices: { list: async ({ lookup_keys }) => ({ data: [{ id: `price_${lookup_keys[0]}` }] }) },
+    subscriptionItems: { update: async (id, params) => { itemUpdates.push([id, params]); return {}; } },
     subscriptions: { list() { return { async *[Symbol.asyncIterator]() { yield* current; } }; }, retrieve: async id => current.find(s => s.id === id) },
     checkout: { sessions: {
       create: async (params, options) => { checkoutCalls++; const s = { id: 'cs_test', url: 'https://checkout.stripe.com/test', status: 'open', params, options }; sessions.set(s.id, s); return s; },
@@ -35,8 +47,9 @@ function fixture(config = {}) {
     } },
     billingPortal: { sessions: { create: async ({ customer }) => ({ url: `https://billing.stripe.com/${customer}` }) } },
   };
-  const service = createBillingService({ db, stripe, config: { enabled: true, priceId: 'price_server', returnUrl: 'https://example.org/return', ...config }, now: () => 200000000 });
-  return { service, data, sessions, setSubscriptions: value => { current = value; }, calls: () => checkoutCalls };
+  let t = 200000000;
+  const service = createBillingService({ db, stripe, config: { enabled: true, priceId: 'price_server', plans: PLANS, returnUrl: 'https://example.org/return', ...config }, now: () => t });
+  return { service, data, sessions, itemUpdates, advance: ms => { t += ms; }, setSubscriptions: value => { current = value; }, calls: () => checkoutCalls };
 }
 
 test('no authentication and forged company membership cannot bill another company', async () => {
@@ -114,4 +127,69 @@ test('Stripe signature validation rejects changed bodies, bad signatures and old
   assert.throws(() => stripe.webhooks.constructEvent(payload + ' ', header, secret));
   assert.throws(() => stripe.webhooks.constructEvent(payload, 'invalid', secret));
   assert.throws(() => stripe.webhooks.constructEvent(payload, stripe.webhooks.generateTestHeaderString({ payload, secret, timestamp: 1 }), secret));
+});
+
+// ---- Kainos pagal lookup_key, vietos pagal vairuotojus, malonės laikotarpis ----
+const drivers = (f, n) => { for (let i = 0; i < n; i++) f.data.set(`companies/company/members/d${i}`, { role: 'driver', status: 'active' }); };
+const companySub = (quantity, status = 'active') => ({ id: 'sub_c', status, metadata: { companyId: 'company' },
+  items: { data: [{ id: 'si_1', quantity, price: { lookup_key: PLANS.company } }] } });
+
+test('company plan checkout uses lookup price and bills at least 3 drivers', async () => {
+  const f = fixture();
+  drivers(f, 2);
+  f.data.set('companies/company/members/disp', { role: 'dispatcher', status: 'active' });
+  f.data.set('companies/company/members/gone', { role: 'driver', status: 'removed' });
+  await f.service.checkout({ uid: 'owner' }, { plan: 'company' });
+  const items = f.sessions.get('cs_test').params.line_items[0];
+  assert.equal(items.price, 'price_karjeroreisai_company_per_driver');
+  assert.equal(items.quantity, 3);
+});
+test('company plan with 5 active drivers bills 5; monthly bills 1; unknown plan rejected', async () => {
+  const f = fixture();
+  drivers(f, 5);
+  await f.service.checkout({ uid: 'owner' }, { plan: 'company' });
+  assert.equal(f.sessions.get('cs_test').params.line_items[0].quantity, 5);
+  const g = fixture();
+  await g.service.checkout({ uid: 'owner' }, { plan: 'yearly' });
+  assert.equal(g.sessions.get('cs_test').params.line_items[0].price, 'price_karjeroreisai_yearly');
+  assert.equal(g.sessions.get('cs_test').params.line_items[0].quantity, 1);
+  await assert.rejects(fixture().service.checkout({ uid: 'owner' }, { plan: 'free_forever' }), { code: 'invalid-argument' });
+});
+test('seat sync: approving a 4th driver sets quantity 4, removing down to 2 keeps 3', async () => {
+  const f = fixture();
+  f.data.set('billingCustomers/company', { customerId: 'cus_test', subscriptionId: 'sub_c' });
+  f.setSubscriptions([companySub(3)]);
+  drivers(f, 4);
+  assert.deepEqual(await f.service.syncSeats({ uid: 'owner' }), { seats: 4 });
+  assert.equal(f.itemUpdates.at(-1)[1].quantity, 4);
+  assert.equal(f.itemUpdates.at(-1)[1].proration_behavior, 'create_prorations');
+  f.setSubscriptions([companySub(4)]);
+  f.data.delete('companies/company/members/d2'); f.data.delete('companies/company/members/d3');
+  assert.deepEqual(await f.service.syncSeats({ uid: 'owner' }), { seats: 3 });
+  assert.equal(f.itemUpdates.at(-1)[1].quantity, 3);
+  await assert.rejects(f.service.syncSeats({ uid: 'attacker' }), { code: 'permission-denied' });
+});
+test('failed payment keeps access for 7 days, then blocks new work', async () => {
+  const f = fixture();
+  f.data.set('billingCustomers/company', { customerId: 'cus_test' });
+  f.setSubscriptions([companySub(3, 'past_due')]);
+  await f.service.event({ id: 'evt_pf', type: 'invoice.payment_failed', data: { object: { customer: 'cus_test' } } });
+  assert.equal(f.data.get('companies/company').plan, 'paid');
+  assert.ok(f.data.get('companies/company').graceUntilMillis > 0);
+  f.advance(GRACE_MS + 1000);
+  await f.service.event({ id: 'evt_pf2', type: 'customer.subscription.updated', data: { object: { customer: 'cus_test' } } });
+  assert.equal(f.data.get('companies/company').plan, 'inactive');
+  f.setSubscriptions([companySub(3, 'active')]);
+  await f.service.event({ id: 'evt_paid', type: 'invoice.paid', data: { object: { customer: 'cus_test' } } });
+  assert.equal(f.data.get('companies/company').plan, 'paid');
+  assert.equal(f.data.get('companies/company').billingPlan, 'company');
+  assert.equal(f.data.get('billingCustomers/company').pastDueSinceMillis, null);
+});
+test('upcoming invoice re-counts drivers before renewal', async () => {
+  const f = fixture();
+  f.data.set('billingCustomers/company', { customerId: 'cus_test', subscriptionId: 'sub_c' });
+  f.setSubscriptions([companySub(3)]);
+  drivers(f, 6);
+  await f.service.event({ id: 'evt_up', type: 'invoice.upcoming', data: { object: { customer: 'cus_test' } } });
+  assert.equal(f.itemUpdates.at(-1)[1].quantity, 6);
 });

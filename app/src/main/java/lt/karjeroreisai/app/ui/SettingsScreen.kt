@@ -78,6 +78,7 @@ private fun SubscriptionPanel(auth: AuthUiState) {
     var refreshing by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
     var loaded by remember { mutableStateOf(false) }
+    var plan by rememberSaveable { mutableStateOf("company") }
     DisposableEffect(auth.uid, auth.companyId, refreshing) {
         var alive = true
         loaded = false
@@ -102,6 +103,11 @@ private fun SubscriptionPanel(auth: AuthUiState) {
     Text(stringResource(R.string.subscription), style = MaterialTheme.typography.titleMedium)
     company?.let {
         Text(stringResource(planLabel(it["plan"] as? String)))
+        (it["billingPlan"] as? String)?.let { p -> billingPlanLabel(p)?.let { id -> Text(stringResource(id)) } }
+        (it["seats"] as? Number)?.let { n -> Text(stringResource(R.string.seats_billed, n.toInt())) }
+        (it["graceUntilMillis"] as? Number)?.let { g -> Text(stringResource(R.string.payment_failed_grace,
+            DateFormat.getDateInstance(DateFormat.MEDIUM, context.resources.configuration.locales[0]).format(Date(g.toLong()))),
+            color = MaterialTheme.colorScheme.error) }
         (it["trialEndsAtMillis"] as? Number)?.let { end ->
             if (it["plan"] == "trial") Text(stringResource(R.string.trial_until,
                 DateFormat.getDateInstance(DateFormat.MEDIUM, context.resources.configuration.locales[0]).format(Date(end.toLong()))))
@@ -112,11 +118,20 @@ private fun SubscriptionPanel(auth: AuthUiState) {
     if (error != 0) Text(stringResource(error), color = MaterialTheme.colorScheme.error)
     val hasSubscription = billing?.get("hasSubscription") == true
     if (billing?.get("enabled") == true) {
+        if (!hasSubscription) {
+            // Choose a plan before paying.
+            listOf("monthly", "yearly", "company", "contractor_small", "contractor_medium", "contractor_large").forEach { p ->
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    RadioButton(selected = plan == p, onClick = { plan = p })
+                    Text(stringResource(billingPlanLabel(p)!!))
+                }
+            }
+        }
         Button(onClick = {
             busy = true
             error = 0
-            functions.getHttpsCallable(if (hasSubscription) "createBillingPortal" else "createCheckout")
-                .call().addOnCompleteListener { result ->
+            val call = functions.getHttpsCallable(if (hasSubscription) "createBillingPortal" else "createCheckout")
+            (if (hasSubscription) call.call() else call.call(mapOf("plan" to plan))).addOnCompleteListener { result ->
                     busy = false
                     val url = if (result.isSuccessful) (result.result.data as? Map<*, *>)?.get("url") as? String else null
                     if (url == null || !openStripeUrl(context, url)) error = R.string.payment_failed
@@ -166,6 +181,16 @@ private fun AdminPanel(uid: String) {
     }
     if (companies.size == 50) TextButton(onClick = { cursor = companies.last().first }) { Text(stringResource(R.string.next_page)) }
     TextButton(onClick = { cursor = null; refresh++ }) { Text(stringResource(R.string.refresh)) }
+}
+
+fun billingPlanLabel(plan: String): Int? = when (plan) {
+    "monthly" -> R.string.bplan_monthly
+    "yearly" -> R.string.bplan_yearly
+    "company" -> R.string.bplan_company
+    "contractor_small" -> R.string.bplan_contractor_small
+    "contractor_medium" -> R.string.bplan_contractor_medium
+    "contractor_large" -> R.string.bplan_contractor_large
+    else -> null
 }
 
 private fun planLabel(plan: String?): Int = when (plan) {
