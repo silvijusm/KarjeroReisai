@@ -60,18 +60,50 @@
             "value": "no-cache"
           }
         ]
+      },
+      {
+        "source": "**/*.apk",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/vnd.android.package-archive"
+          },
+          {
+            "key": "Content-Disposition",
+            "value": "attachment; filename=KarjeroReisai.apk"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
     ],
     "cleanUrls": true,
     "redirects": [
       {
         "source": "/apk",
-        "destination": "https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk",
+        "destination": "/KarjeroReisai.apk",
         "type": 302
       },
       {
         "source": "/pagalba",
-        "destination": "https://silvijusm.github.io/KarjeroReisai/site/pagalba.html",
+        "destination": "/site/pagalba",
+        "type": 302
+      },
+      {
+        "source": "/svetaine",
+        "destination": "/site/",
+        "type": 302
+      },
+      {
+        "source": "/privatumas",
+        "destination": "/site/privacy",
+        "type": 302
+      },
+      {
+        "source": "/istrynimas",
+        "destination": "/site/delete-account",
         "type": 302
       }
     ]

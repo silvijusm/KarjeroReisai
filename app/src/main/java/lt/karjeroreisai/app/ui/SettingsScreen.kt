@@ -64,7 +64,7 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
                 DeleteAccountButton(auth, working, onDeleted = onLogout)
             }
             androidx.compose.material3.TextButton(
-                onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://silvijusm.github.io/KarjeroReisai/site/pagalba.html"))) } },
+                onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://karjieroreisai.web.app/pagalba"))) } },
                 modifier = Modifier.fillMaxWidth()
             ) { Text(stringResource(R.string.help)) }
             Text(stringResource(R.string.admin_hint))

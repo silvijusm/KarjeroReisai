@@ -26,3 +26,5 @@ functions/.env*
 
 # Generated at deploy time
 web/config.js
+web/site/
+web/*.apk
