@@ -10,7 +10,7 @@ before(async () => {
 after(async () => { await env?.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
 const db = (uid) => env.authenticatedContext(uid, { email: `${uid}@example.test` }).firestore();
-const company = (uid, patch = {}) => ({ name: 'Test company', ownerUid: uid, plan: 'trial', trialEndsAtMillis: Date.now() + 60 * 86400000, createdAt: serverTimestamp(), ...patch });
+const company = (uid, patch = {}) => ({ name: 'Test company', ownerUid: uid, plan: 'trial', trialEndsAtMillis: Date.now() + 30 * 86400000, createdAt: serverTimestamp(), ...patch });
 const profile = (uid, companyId, patch = {}) => ({ email: `${uid}@example.test`, name: 'Test user', role: 'company_admin', companyId, createdAt: serverTimestamp(), ...patch });
 function register(uid, id, companyPatch = {}, userPatch = {}) {
   const client = db(uid), batch = writeBatch(client);
@@ -72,6 +72,7 @@ test('signup cannot claim super_admin or another owner', async () => {
 test('signup cannot claim paid plan, long trial or forged creation time', async () => {
   await assertFails(register('alice', 'a', { plan: 'paid' }));
   await assertFails(register('alice', 'a', { trialEndsAtMillis: Date.now() + 365 * 86400000 }));
+  await assertFails(register('alice', 'a', { trialEndsAtMillis: Date.now() + 60 * 86400000 }));
   await assertFails(register('alice', 'a', { createdAt: Timestamp.fromMillis(0) }));
 });
 test('signup rejects extra privilege fields and mismatched email', async () => {

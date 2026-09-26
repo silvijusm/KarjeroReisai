@@ -9,6 +9,8 @@ service cloud.firestore {
     function isSuperAdmin() {
       return signedIn() && currentUser().data.role == 'super_admin';
     }
+    // Trial length (30 days). Must match TRIAL_DAYS in AuthViewModel.kt.
+    function trialMs() { return 2592000000; }
     function validName(value) {
       return value is string && value.size() > 0 && value.size() <= 200;
     }
@@ -46,8 +48,8 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.trialEndsAtMillis is int
         // Keep the Android millisecond field; bound client clock skew to five minutes.
-        && request.resource.data.trialEndsAtMillis >= request.time.toMillis() + 5183700000
-        && request.resource.data.trialEndsAtMillis <= request.time.toMillis() + 5184300000
+        && request.resource.data.trialEndsAtMillis >= request.time.toMillis() + trialMs() - 300000
+        && request.resource.data.trialEndsAtMillis <= request.time.toMillis() + trialMs() + 300000
         && !exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin';

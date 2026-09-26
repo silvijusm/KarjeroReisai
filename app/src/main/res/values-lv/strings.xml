@@ -12,7 +12,7 @@
     <string name="create_company">Izveidot uzņēmuma kontu</string>
     <string name="name">Vārds</string>
     <string name="company_name">Uzņēmuma nosaukums</string>
-    <string name="trial_intro">Pirmās 60 dienas ir izmēģinājuma periods.</string>
+    <string name="trial_intro">Pirmās 30 dienas ir izmēģinājuma periods.</string>
     <string name="email">E-pasts</string>
     <string name="password">Parole</string>
     <string name="forgot_password">Aizmirsu paroli</string>

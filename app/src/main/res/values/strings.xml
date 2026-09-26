@@ -12,7 +12,7 @@
     <string name="create_company">Sukurti įmonės paskyrą</string>
     <string name="name">Vardas</string>
     <string name="company_name">Įmonės pavadinimas</string>
-    <string name="trial_intro">Pirmos 60 dienų – bandomasis laikotarpis.</string>
+    <string name="trial_intro">Pirmos 30 dienų – bandomasis laikotarpis.</string>
     <string name="email">El. paštas</string>
     <string name="password">Slaptažodis</string>
     <string name="forgot_password">Pamiršau slaptažodį</string>

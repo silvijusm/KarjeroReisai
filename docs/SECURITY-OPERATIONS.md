@@ -26,10 +26,10 @@ npx firebase deploy --only firestore:rules --project karjieroreisai
 ```
 
 Taisyklės išlaiko Android naudojamą atominę įmonės ir profilio registraciją.
-60 dienų bandymo pabaigai leidžiama iki 5 minučių telefono laikrodžio paklaida.
+30 dienų bandymo pabaigai leidžiama iki 5 minučių telefono laikrodžio paklaida.
 Plano, bandymo trukmės, savininko ir rolės keitimai atliekami tik patikimoje
 serverio aplinkoje per Admin SDK. Android versija 0.7.0 neleidžia pradėti naujo
-darbo, kai `company_admin` neturi aktyvaus `paid` plano ir 60 dienų bandomasis
+darbo, kai `company_admin` neturi aktyvaus `paid` plano ir 30 dienų bandomasis
 laikotarpis jau pasibaigęs. Jau pradėtą darbą galima saugiai užbaigti.
 
 ## Google API raktas
