@@ -24,9 +24,15 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLogout: () -> Unit) {
+fun SettingsScreen(auth: AuthUiState, working: Boolean, sync: SyncUiState, onSync: () -> Unit, onImportLegacy: () -> Unit,
+    onBack: () -> Unit, onLogout: () -> Unit) {
     val context = LocalContext.current
     var adminOpen by rememberSaveable { mutableStateOf(false) }
+    var confirmImport by remember { mutableStateOf(false) }
+    if (confirmImport) AlertDialog(onDismissRequest = { confirmImport = false },
+        title = { Text(stringResource(R.string.sync_import)) }, text = { Text(stringResource(R.string.sync_import_explanation)) },
+        confirmButton = { TextButton(onClick = { confirmImport = false; onImportLegacy() }) { Text(stringResource(R.string.sync_import)) } },
+        dismissButton = { TextButton(onClick = { confirmImport = false }) { Text(stringResource(R.string.back)) } })
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)
         .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -49,9 +55,29 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
             Text(stringResource(R.string.account), style = MaterialTheme.typography.titleMedium)
             if (auth.signedIn) {
                 Text(auth.email)
+                if (!auth.companyId.isNullOrBlank()) {
+                    Text(stringResource(R.string.sync_title), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(when {
+                        sync.status == "blocked" -> R.string.sync_blocked
+                        sync.status == "running" -> R.string.sync_running
+                        sync.pending > 0 -> R.string.sync_pending
+                        sync.lastSuccess > 0 -> R.string.sync_done
+                        else -> R.string.sync_pending
+                    }))
+                    Text(stringResource(R.string.sync_count, sync.pending))
+                    if (sync.lastSuccess > 0) Text(stringResource(R.string.sync_last,
+                        DateFormat.getDateTimeInstance().format(Date(sync.lastSuccess))))
+                    OutlinedButton(onClick = onSync) { Text(stringResource(R.string.sync_now)) }
+                    if (auth.role == "company_admin" && sync.legacyAvailable) {
+                        OutlinedButton(onClick = { confirmImport = true }, enabled = !working) { Text(stringResource(R.string.sync_import)) }
+                    }
+                    HorizontalDivider()
+                }
                 Text(stringResource(when (auth.role) {
                     "super_admin" -> R.string.role_owner
                     "company_admin" -> R.string.role_company
+                    "driver" -> R.string.role_driver
+                    "dispatcher" -> R.string.role_dispatcher
                     else -> R.string.role_unknown
                 }))
                 if (auth.role == "super_admin") {

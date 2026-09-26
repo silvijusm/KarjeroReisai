@@ -107,4 +107,17 @@
     <string name="report_auto">Automatinis</string>
     <string name="report_start">Darbo pradžia</string>
     <string name="report_end">Darbo pabaiga</string>
+    <string name="sync_title">Sinchronizavimas</string>
+    <string name="sync_pending">Laukiama ryšio arba siuntimo. Duomenys išsaugoti telefone.</string>
+    <string name="sync_running">Sinchronizuojama…</string>
+    <string name="sync_done">Duomenys sinchronizuoti.</string>
+    <string name="sync_blocked">Siuntimas neleidžiamas. Patikrinkite įmonės prieigą arba susisiekite su administratoriumi. Duomenys liko telefone.</string>
+    <string name="sync_count">Laukiančių darbo sesijų: %1$d</string>
+    <string name="sync_last">Paskutinį kartą: %1$s</string>
+    <string name="sync_now">Sinchronizuoti dabar</string>
+    <string name="sync_import">Perkelti senus telefono reisus</string>
+    <string name="sync_import_explanation">Senuose įrašuose nėra paskyros žymos. Patvirtinkite tik jei tai jūsų reisai: jie bus priskirti šiai paskyrai ir įmonei bei nusiųsti į debesį. Sena kopija išliks telefone.</string>
+    <string name="sync_import_failed">Nepavyko perkelti senų reisų. Originalūs duomenys išsaugoti.</string>
+    <string name="role_driver">Vairuotojas</string>
+    <string name="role_dispatcher">Dispečeris</string>
 </resources>

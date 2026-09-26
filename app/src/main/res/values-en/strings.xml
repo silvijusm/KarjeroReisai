@@ -107,4 +107,17 @@
     <string name="report_auto">Automatic</string>
     <string name="report_start">Work start</string>
     <string name="report_end">Work end</string>
+    <string name="sync_title">Synchronization</string>
+    <string name="sync_pending">Waiting for connection or upload. Data is saved on this phone.</string>
+    <string name="sync_running">Synchronizing…</string>
+    <string name="sync_done">Data synchronized.</string>
+    <string name="sync_blocked">Upload denied. Check company access or contact the administrator. Data remains on this phone.</string>
+    <string name="sync_count">Pending work sessions: %1$d</string>
+    <string name="sync_last">Last synchronized: %1$s</string>
+    <string name="sync_now">Synchronize now</string>
+    <string name="sync_import">Import earlier phone trips</string>
+    <string name="sync_import_explanation">Earlier records have no account identity. Confirm only if these are your trips: they will be assigned to this account and company and uploaded. The original copy stays on this phone.</string>
+    <string name="sync_import_failed">Could not import earlier trips. Original data is preserved.</string>
+    <string name="role_driver">Driver</string>
+    <string name="role_dispatcher">Dispatcher</string>
 </resources>

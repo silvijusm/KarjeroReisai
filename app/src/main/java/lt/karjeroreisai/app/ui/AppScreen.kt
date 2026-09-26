@@ -62,6 +62,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import kotlinx.coroutines.launch
+import lt.karjeroreisai.app.data.SyncIdentity
 import lt.karjeroreisai.app.data.BillingMode
 import lt.karjeroreisai.app.data.GpsPoint
 import lt.karjeroreisai.app.data.WorkSession
@@ -81,6 +82,7 @@ fun KarjeroReisaiApp(
     val context = LocalContext.current
     val dashboard by viewModel.dashboard.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
+    val syncState by viewModel.sync.collectAsStateWithLifecycle()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
 
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -92,7 +94,7 @@ fun KarjeroReisaiApp(
     var entitlementLoading by remember(authState.uid, authState.companyId) { mutableStateOf(false) }
 
     DisposableEffect(authState.signedIn, authState.role, authState.companyId) {
-        if (authState.signedIn && authState.role == "company_admin" && !authState.companyId.isNullOrBlank()) {
+        if (authState.signedIn && authState.role in setOf("company_admin", "driver", "dispatcher") && !authState.companyId.isNullOrBlank()) {
             entitlementLoading = true
             val registration = FirebaseFirestore.getInstance()
                 .collection("companies")
@@ -118,7 +120,7 @@ fun KarjeroReisaiApp(
 
     val canStartWork =
         authState.role == "super_admin" ||
-            (authState.role == "company_admin" &&
+            (authState.role in setOf("company_admin", "driver", "dispatcher") &&
                 (companyPlan == "paid" || (companyPlan == "trial" && trialEndsAtMillis > nowMillis)))
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -148,7 +150,7 @@ fun KarjeroReisaiApp(
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Surface(Modifier.fillMaxSize()) {
-                    SettingsScreen(authState, dashboard.session != null,
+                    SettingsScreen(authState, dashboard.session != null, syncState, viewModel::syncNow, viewModel::importLegacy,
                         onBack = { settingsOpen = false },
                         onLogout = { authViewModel.signOut(); settingsOpen = false })
                 }
@@ -211,7 +213,7 @@ fun KarjeroReisaiApp(
                                             radius,
                                             mode,
                                             rate
-                                        ) { id -> startTracking(context, id) }
+                                        ) { id -> startTracking(context, id, viewModel.identity) }
                                     }
 
                                     if (hasLocationPermission(context)) action()
@@ -638,9 +640,11 @@ private fun requiredPermissions(): Array<String> {
     return result.toTypedArray()
 }
 
-private fun startTracking(context: Context, sessionId: Long) {
+private fun startTracking(context: Context, sessionId: Long, identity: SyncIdentity) {
     val intent = Intent(context, LocationTrackingService::class.java)
         .putExtra(LocationTrackingService.EXTRA_SESSION_ID, sessionId)
+        .putExtra(LocationTrackingService.EXTRA_UID, identity.uid)
+        .putExtra(LocationTrackingService.EXTRA_COMPANY, identity.companyId)
     ContextCompat.startForegroundService(context, intent)
 }
 

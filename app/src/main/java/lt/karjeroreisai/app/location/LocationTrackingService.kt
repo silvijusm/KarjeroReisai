@@ -21,10 +21,15 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import lt.karjeroreisai.app.data.AppDatabase
+import lt.karjeroreisai.app.data.SyncIdentity
+import lt.karjeroreisai.app.data.SyncWorker
+import com.google.firebase.auth.FirebaseAuth
 
 class LocationTrackingService : Service() {
 
     private lateinit var db: AppDatabase
+    private lateinit var identity: SyncIdentity
+    private var lastSyncAt = System.currentTimeMillis()
     private val fused by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private var sessionId: Long = -1L
 
@@ -34,6 +39,9 @@ class LocationTrackingService : Service() {
         override fun onLocationResult(result: LocationResult) {
             val location = result.lastLocation ?: return
             if (sessionId <= 0L) return
+            if (FirebaseAuth.getInstance().currentUser?.uid != identity.uid || db.getActiveSession()?.id != sessionId) {
+                stopSelf(); return
+            }
 
             val now = location.time.takeIf { it > 0L } ?: System.currentTimeMillis()
 
@@ -48,23 +56,36 @@ class LocationTrackingService : Service() {
 
             saveLatestLocation(location)
             processAutoCounting(location, now)
+            if (System.currentTimeMillis() - lastSyncAt >= 300_000L) {
+                SyncWorker.schedule(applicationContext, identity)
+                lastSyncAt = System.currentTimeMillis()
+            }
         }
     }
 
     override fun onCreate() {
         super.onCreate()
-        db = AppDatabase(applicationContext)
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val account = getSharedPreferences("tracking_account", MODE_PRIVATE)
+        val uid = intent?.getStringExtra(EXTRA_UID) ?: account.getString("uid", null)
+        val companyId = intent?.getStringExtra(EXTRA_COMPANY) ?: account.getString("companyId", "")
+        if (uid.isNullOrBlank() || FirebaseAuth.getInstance().currentUser?.uid != uid) {
+            stopSelf(); return START_NOT_STICKY
+        }
+        val nextIdentity = SyncIdentity(uid, companyId.orEmpty())
+        if (::db.isInitialized && identity != nextIdentity) { stopSelf(); return START_NOT_STICKY }
+        if (!::db.isInitialized) { identity = nextIdentity; db = AppDatabase(applicationContext, identity) }
+        account.edit().putString("uid", uid).putString("companyId", companyId).apply()
         sessionId = if (intent?.hasExtra(EXTRA_SESSION_ID) == true) {
             intent.getLongExtra(EXTRA_SESSION_ID, -1L)
         } else {
             db.getActiveSession()?.id ?: -1L
         }
 
-        if (sessionId <= 0L) {
+        if (sessionId <= 0L || db.getActiveSession()?.id != sessionId) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -121,7 +142,7 @@ class LocationTrackingService : Service() {
     }
 
     private fun saveLatestLocation(location: Location) {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+        getSharedPreferences(identity.preferencesName, MODE_PRIVATE).edit()
             .putLong(KEY_LATEST_LAT_BITS, location.latitude.toBits())
             .putLong(KEY_LATEST_LON_BITS, location.longitude.toBits())
             .putLong(KEY_LATEST_TIME, System.currentTimeMillis())
@@ -208,13 +229,13 @@ class LocationTrackingService : Service() {
     }
 
     private fun saveAutoState(state: AutoState) {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+        getSharedPreferences(identity.preferencesName, MODE_PRIVATE).edit()
             .putString(autoStateKey(sessionId), state.name)
             .apply()
     }
 
     private fun loadAutoState(): AutoState {
-        val value = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val value = getSharedPreferences(identity.preferencesName, MODE_PRIVATE)
             .getString(autoStateKey(sessionId), AutoState.WAITING_FOR_A.name)
 
         return runCatching { AutoState.valueOf(value ?: AutoState.WAITING_FOR_A.name) }
@@ -222,13 +243,13 @@ class LocationTrackingService : Service() {
     }
 
     private fun saveTripStartTime(time: Long) {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+        getSharedPreferences(identity.preferencesName, MODE_PRIVATE).edit()
             .putLong(tripStartKey(sessionId), time)
             .apply()
     }
 
     private fun loadTripStartTime(): Long =
-        getSharedPreferences(PREFS, MODE_PRIVATE)
+        getSharedPreferences(identity.preferencesName, MODE_PRIVATE)
             .getLong(tripStartKey(sessionId), 0L)
 
     private fun createNotificationChannel() {
@@ -253,6 +274,8 @@ class LocationTrackingService : Service() {
 
     companion object {
         const val EXTRA_SESSION_ID = "extra_session_id"
+        const val EXTRA_UID = "extra_uid"
+        const val EXTRA_COMPANY = "extra_company"
 
         const val PREFS = "location_tracking"
         const val KEY_HAS_LATEST = "has_latest"

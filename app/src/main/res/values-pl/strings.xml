@@ -107,4 +107,17 @@
     <string name="report_auto">Automatycznie</string>
     <string name="report_start">Początek pracy</string>
     <string name="report_end">Koniec pracy</string>
+    <string name="sync_title">Synchronizacja</string>
+    <string name="sync_pending">Oczekiwanie na połączenie lub wysyłanie. Dane zapisano w telefonie.</string>
+    <string name="sync_running">Synchronizowanie…</string>
+    <string name="sync_done">Dane zsynchronizowane.</string>
+    <string name="sync_blocked">Wysyłanie zablokowane. Sprawdź dostęp do firmy lub skontaktuj się z administratorem. Dane pozostały w telefonie.</string>
+    <string name="sync_count">Sesje pracy w kolejce: %1$d</string>
+    <string name="sync_last">Ostatnia synchronizacja: %1$s</string>
+    <string name="sync_now">Synchronizuj teraz</string>
+    <string name="sync_import">Przenieś wcześniejsze kursy z telefonu</string>
+    <string name="sync_import_explanation">Starsze wpisy nie mają oznaczenia konta. Potwierdź tylko własne kursy: zostaną przypisane do tego konta i firmy oraz wysłane do chmury. Oryginał pozostanie w telefonie.</string>
+    <string name="sync_import_failed">Nie udało się przenieść wcześniejszych kursów. Oryginalne dane zachowano.</string>
+    <string name="role_driver">Kierowca</string>
+    <string name="role_dispatcher">Dyspozytor</string>
 </resources>

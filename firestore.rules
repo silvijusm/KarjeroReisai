@@ -83,6 +83,97 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
         && validName(request.resource.data.name);
 
+      function workWriter() {
+        return signedIn() && (isCompanyOwner(companyId) || isActiveMember(companyId)
+          || (isSuperAdmin() && currentUser().data.companyId == companyId));
+      }
+      function nullableCoordinate(value, bound) { return value == null || (value is number && value >= -bound && value <= bound); }
+      function shortText(value, size) { return value is string && value.size() <= size; }
+      function positiveNumber(value) { return value is number && value >= 0 && value <= 1000000000000; }
+      function validSession(d) {
+        return d.keys().hasOnly(['schemaVersion', 'driverUid', 'deviceId', 'revision', 'completeRevision',
+          'date', 'startedAt', 'endedAt', 'loadingPlace', 'unloadingPlace', 'truck', 'trailer', 'defaultWeight',
+          'loadingLat', 'loadingLon', 'unloadingLat', 'unloadingLon', 'zoneRadiusM', 'autoCount', 'billingMode',
+          'rate', 'tripsCount', 'tonnes', 'km', 'earnings', 'updatedAt'])
+          && d.schemaVersion == 1 && d.driverUid == request.auth.uid
+          && d.deviceId is string && d.deviceId.matches('^[a-f0-9-]{36}$')
+          && d.revision is int && d.revision > 0
+          && d.completeRevision in [0, d.revision]
+          && shortText(d.date, 10) && d.startedAt is int && d.startedAt > 0
+          && (d.endedAt == null || (d.endedAt is int && d.endedAt >= d.startedAt))
+          && shortText(d.loadingPlace, 200) && shortText(d.unloadingPlace, 200)
+          && shortText(d.truck, 80) && shortText(d.trailer, 80)
+          && positiveNumber(d.defaultWeight) && positiveNumber(d.rate)
+          && nullableCoordinate(d.loadingLat, 90) && nullableCoordinate(d.loadingLon, 180)
+          && nullableCoordinate(d.unloadingLat, 90) && nullableCoordinate(d.unloadingLon, 180)
+          && d.zoneRadiusM is number && d.zoneRadiusM >= 50 && d.zoneRadiusM <= 500
+          && d.autoCount is bool && d.billingMode in ['PER_TRIP', 'PER_TON', 'PER_DAY', 'PER_TON_KM']
+          && d.tripsCount is int && d.tripsCount >= 0 && positiveNumber(d.tonnes)
+          && positiveNumber(d.km) && positiveNumber(d.earnings) && d.updatedAt == request.time;
+      }
+      match /sessions/{sessionId} {
+        function ownSession() { return workWriter() && resource.data.driverUid == request.auth.uid; }
+        allow get: if canReadTeam(companyId) || ownSession()
+          || (workWriter() && !exists(/databases/$(database)/documents/companies/$(companyId)/sessions/$(sessionId)));
+        allow list: if canReadTeam(companyId) || ownSession();
+        allow create: if workWriter() && sessionId.matches('^[a-f0-9-]{36}$')
+          && validSession(request.resource.data) && request.resource.data.completeRevision == 0;
+        allow update: if ownSession() && validSession(request.resource.data)
+          && request.resource.data.driverUid == resource.data.driverUid
+          && request.resource.data.deviceId == resource.data.deviceId
+          && request.resource.data.startedAt == resource.data.startedAt
+          && (resource.data.endedAt == null || request.resource.data.endedAt == resource.data.endedAt)
+          && ((request.resource.data.revision > resource.data.revision && request.resource.data.completeRevision == 0)
+            || (request.resource.data.revision == resource.data.revision
+              && (resource.data.completeRevision == 0 || request.resource.data.completeRevision == resource.data.completeRevision)));
+        function parentSession() {
+          return get(/databases/$(database)/documents/companies/$(companyId)/sessions/$(sessionId)).data;
+        }
+        function readChild() {
+          return canReadTeam(companyId) || (workWriter() && parentSession().driverUid == request.auth.uid);
+        }
+        function writeChild(d) {
+          return workWriter() && parentSession().driverUid == request.auth.uid
+            && parentSession().completeRevision == 0 && d.revision == parentSession().revision
+            && d.updatedAt == request.time;
+        }
+        match /trips/{tripId} {
+          function validTrip(d) {
+            return d.keys().hasOnly(['tripNumber', 'timestamp', 'latitude', 'longitude', 'weight', 'source',
+              'startTimestamp', 'distanceKm', 'durationMs', 'deleted', 'revision', 'updatedAt'])
+              && tripId.matches('^[0-9]{1,20}$') && d.tripNumber is int && d.tripNumber > 0
+              && d.timestamp is int && d.timestamp >= 0 && d.startTimestamp is int && d.startTimestamp >= 0
+              && nullableCoordinate(d.latitude, 90) && nullableCoordinate(d.longitude, 180)
+              && positiveNumber(d.weight) && positiveNumber(d.distanceKm)
+              && d.durationMs is int && d.durationMs >= 0 && d.source in ['MANUAL', 'AUTO', 'SETUP']
+              && d.deleted is bool && d.revision is int;
+          }
+          allow read: if readChild();
+          allow create: if writeChild(request.resource.data) && validTrip(request.resource.data);
+          allow update: if writeChild(request.resource.data) && validTrip(request.resource.data)
+            && request.resource.data.revision >= resource.data.revision;
+        }
+        match /routeChunks/{chunkId} {
+          function validChunk(d) {
+            return d.keys().hasOnly(['encoding', 'polyline', 'times', 'accuracies', 'speeds', 'pointCount',
+              'firstPointId', 'lastPointId', 'revision', 'updatedAt'])
+              && chunkId.matches('^[0-9]{1,20}$') && d.encoding == 'polyline5'
+              && d.polyline is string && d.polyline.size() > 0 && d.polyline.size() <= 10000
+              && d.pointCount is int && d.pointCount > 0 && d.pointCount <= 500
+              && d.times is list && d.times.size() == d.pointCount
+              && d.accuracies is list && d.accuracies.size() == d.pointCount
+              && d.speeds is list && d.speeds.size() == d.pointCount
+              && d.firstPointId is int && d.firstPointId > 0
+              && d.lastPointId is int && d.lastPointId >= d.firstPointId && d.revision is int;
+          }
+          allow read: if readChild();
+          allow create: if writeChild(request.resource.data) && validChunk(request.resource.data);
+          allow update: if writeChild(request.resource.data) && validChunk(request.resource.data)
+            && request.resource.data.revision >= resource.data.revision
+            && request.resource.data.firstPointId == resource.data.firstPointId
+            && request.resource.data.lastPointId >= resource.data.lastPointId;
+        }
+      }
       match /members/{uid} {
         // Pending/removed users may only read their own membership status.
         allow read: if signedIn() && (request.auth.uid == uid || canReadTeam(companyId));
@@ -93,8 +184,8 @@ service cloud.firestore {
         // Vehicles are managed by the owner through a validated callable.
       }
     }
-    // companyCodes and companyJoinLimits are server-only. Session, trip and
-    // location access stays denied until the separately reviewed sync stage.
+    // companyCodes and companyJoinLimits are server-only.
+    // Live location access stays denied until the live-map stage.
     // No client deletes; unmatched collections are denied by default.
   }
 }
