@@ -32,11 +32,38 @@ if [ -n "${STRIPE_SECRET_KEY:-}" ]; then
     $FB functions:secrets:set "$1" --data-file "$TMP/secret.txt" --force >/dev/null
     rm -f "$TMP/secret.txt"
   }
+  ACCOUNT=$(stripe https://api.stripe.com/v1/account | jq -r '.id // "?"')
+  echo "::notice title=Stripe::Account $ACCOUNT ($( [[ "$STRIPE_SECRET_KEY" == sk_live_* || "$STRIPE_SECRET_KEY" == rk_live_* ]] && echo LIVE || echo test ))"
+
+  # Prices are looked up by lookup_key. Create any that are missing (same amounts as the website).
+  ensure_price() { # lookup_key amount_cents interval nickname
+    local found
+    found=$(stripe -G https://api.stripe.com/v1/prices -d "lookup_keys[]=$1" -d active=true | jq -r '.data[0].id // empty')
+    if [ -z "$found" ]; then
+      if [ -z "${PRODUCT:-}" ]; then
+        PRODUCT=$(stripe https://api.stripe.com/v1/products -d "name=KarjeroReisai prenumerata" | jq -r '.id')
+      fi
+      found=$(stripe https://api.stripe.com/v1/prices -d product="$PRODUCT" -d currency=eur -d unit_amount="$2" \
+        -d "recurring[interval]=$3" -d lookup_key="$1" -d tax_behavior=inclusive -d nickname="$4" | jq -r '.id // empty')
+      [ -n "$found" ] || { echo "Could not create price $1"; exit 1; }
+      echo "::notice title=Stripe::Created price $1"
+    fi
+  }
+  ensure_price karjeroreisai_monthly 500 month "Mėnesio"
+  ensure_price karjeroreisai_yearly 5500 year "Metinė"
+  ensure_price karjeroreisai_company_per_driver 300 month "Įmonėms – už vairuotoją (nuo 3)"
+  ensure_price karjeroreisai_contractor_small 4900 month "Rangovas – iki 10 aut."
+  ensure_price karjeroreisai_contractor_medium 9900 month "Rangovas – iki 30 aut."
+  ensure_price karjeroreisai_contractor_large 19900 month "Rangovas – neribotai"
+
   CURRENT=$($FB functions:secrets:access STRIPE_SECRET_KEY 2>/dev/null || true)
-  if [ "$CURRENT" != "$STRIPE_SECRET_KEY" ]; then echo "Saving Stripe key to Secret Manager"; set_secret STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"; fi
+  KEY_CHANGED=0
+  if [ "$CURRENT" != "$STRIPE_SECRET_KEY" ]; then echo "Saving Stripe key to Secret Manager"; set_secret STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"; KEY_CHANGED=1; fi
+  # The webhook must exist in the key's account; check it is there.
+  HOOK_OK=$(stripe https://api.stripe.com/v1/webhook_endpoints?limit=100 | jq -r --arg u "$HOOK_URL" '[.data[] | select(.url==$u)] | length')
 
   # Webhook: its signing secret is shown by Stripe only when created, so create it here if we do not have it.
-  if ! $FB functions:secrets:access STRIPE_WEBHOOK_SECRET >/dev/null 2>&1; then
+  if [ "$KEY_CHANGED" = "1" ] || [ "$HOOK_OK" = "0" ] || ! $FB functions:secrets:access STRIPE_WEBHOOK_SECRET >/dev/null 2>&1; then
     for id in $(stripe https://api.stripe.com/v1/webhook_endpoints?limit=100 | jq -r --arg u "$HOOK_URL" '.data[] | select(.url==$u) | .id'); do
       stripe -X DELETE "https://api.stripe.com/v1/webhook_endpoints/$id" >/dev/null
     done
@@ -48,7 +75,7 @@ if [ -n "${STRIPE_SECRET_KEY:-}" ]; then
     [ -n "$WHSEC" ] || { echo "Could not create the Stripe webhook"; exit 1; }
     echo "::add-mask::$WHSEC"
     set_secret STRIPE_WEBHOOK_SECRET "$WHSEC"
-    echo "Stripe webhook created: $HOOK_URL"
+    echo "::notice title=Stripe::Webhook created: $HOOK_URL"
   fi
 
   # Customer portal (change card, invoices, cancel) needs a saved configuration.
@@ -61,7 +88,7 @@ if [ -n "${STRIPE_SECRET_KEY:-}" ]; then
       -d "features[subscription_cancel][mode]=at_period_end" \
       -d "features[customer_update][enabled]=true" -d "features[customer_update][allowed_updates][]=email" \
       -d "features[customer_update][allowed_updates][]=address" -d "features[customer_update][allowed_updates][]=tax_id" >/dev/null
-    echo "Stripe customer portal configured"
+    echo "::notice title=Stripe::Customer portal configured"
   fi
 
   cat > functions/.env <<ENV
