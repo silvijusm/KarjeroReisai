@@ -8,6 +8,8 @@ on:
     branches: [main]
     paths:
       - "app/**"
+      - "scripts/make-signing-key.py"
+      - ".github/workflows/test-apk.yml"
 
 permissions:
   contents: write
@@ -36,8 +38,22 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: python3 scripts/prepare-firebase-config.py
+      - name: Stable signing key (same every build, derived from a secret)
+        env:
+          APK_SIGNING_SEED: ${{ secrets.APK_SIGNING_SEED }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          pip install --quiet "cryptography>=44"
+          PW=$(python3 scripts/make-signing-key.py "$RUNNER_TEMP/kr.p12")
+          echo "::add-mask::$PW"
+          echo "KR_KEYSTORE=$RUNNER_TEMP/kr.p12" >> "$GITHUB_ENV"
+          echo "KR_KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
+      - name: Check signature
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | grep -E "DN|SHA-256" | tee /dev/stderr | grep -q "CN=KarjeroReisai" 
       - name: Publish to release "testas"
         env:
           GH_TOKEN: ${{ github.token }}

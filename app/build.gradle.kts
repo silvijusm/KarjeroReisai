@@ -13,8 +13,28 @@ android {
         applicationId = "lt.karjeroreisai.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.3.4"
+        versionCode = 21
+        versionName = "1.3.5"
+    }
+
+    // CI builds the test APK with a stable key (scripts/make-signing-key.py), so updates install over
+    // the previous version. Local builds keep the normal debug key.
+    val ciKeystore = System.getenv("KR_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (ciKeystore != null) {
+            create("stable") {
+                storeFile = ciKeystore
+                storeType = "pkcs12"
+                storePassword = System.getenv("KR_KEYSTORE_PASSWORD")
+                keyAlias = "karjeroreisai"
+                keyPassword = System.getenv("KR_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        getByName("debug") {
+            if (ciKeystore != null) signingConfig = signingConfigs.getByName("stable")
+        }
     }
 
     buildFeatures {
