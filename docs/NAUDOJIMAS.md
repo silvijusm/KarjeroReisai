@@ -34,6 +34,17 @@
 3. Didelis žalias **PAKRAUTA** – tonos įrašomos pagal rangovo nustatymus. Veikia ir be ryšio.
 4. Klaidą galima atšaukti per 15 min.
 
+## Sąskaitos faktūros (vežėjui)
+1. https://karjieroreisai.web.app → **Įmonė → Rekvizitai sąskaitoms**: pavadinimas, įm. kodas, PVM kodas, adresas, IBAN, serija → **Išsaugoti**.
+2. **Objektai → Objektai, kuriuose dirbu → Pakrovimai** → pasirinkite laikotarpį → **🧾 Išrašyti sąskaitą faktūrą**.
+3. Pasirinkite įkainį (už reisą / toną / t·km), kainą ir PVM → **Išrašyti ir išsaugoti** → atsidaro PDF spausdinimui.
+4. Įtraukiami tik vairuotojų **patvirtinti** pakrovimai. Numeris didėja automatiškai, visos sąskaitos matomos **Įmonė → Sąskaitos faktūros**.
+
+## Asmens duomenys (BDAR)
+- Vairuotojas pirmą kartą mato pranešimą, kokie duomenys renkami, ir spaudžia **Susipažinau**.
+- Vieta renkama tik darbo metu. Senesni nei 365 d. (galima keisti **Įmonė → GPS duomenų saugojimas**) maršrutų taškai ištrinami kiekvieną naktį; reisai, tonos ir km lieka.
+- Vairuotojas: **Nustatymai → Mano duomenys** – atsisiunčia savo darbų CSV.
+
 ## Svarbu
 - Važtaraščio teisinę galią (ar gali pakeisti popierinį) patvirtinkite su rangovo buhalterija / buhalteriu. Pradžioje naudokite šalia popierinio.
 - Serverio dalies įdiegimas: GitHub → Actions → **Deploy Firebase** → Run workflow.

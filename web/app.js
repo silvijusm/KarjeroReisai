@@ -9,6 +9,7 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 import { firebaseConfig } from './config.js';
 import { t, lang, setLang, LANGS } from './i18n.js';
 import { pageObjects } from './objects.js';
+import { invoiceList } from './invoices.js';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -419,6 +420,37 @@ function pageReports(main) {
   run();
 }
 
+// ---------- company details for invoices ----------
+function profileCard(c) {
+  const p = c.profile || {};
+  const f = {};
+  const field = (k, label, attrs = {}) => { f[k] = h('input', { value: p[k] ?? '', ...attrs }); return h('label', { style: 'display:flex;flex-direction:column;gap:2px' }, h('small', { class: 'muted' }, label), f[k]); };
+  const msg = h('span', { class: 'muted' });
+  return h('div', { class: 'card' }, h('h2', {}, t('invoiceDetails')), h('p', { class: 'muted' }, t('invoiceDetailsHint')),
+    h('div', { class: 'row', style: 'align-items:flex-end' },
+      field('legalName', t('legalName'), { placeholder: c.name || '' }), field('code', t('companyCodeShort')), field('vat', t('vatCode')),
+      field('address', t('address'), { style: 'min-width:260px' }), field('iban', 'IBAN', { style: 'min-width:220px' }), field('bank', t('bank')),
+      field('invoiceSeries', t('invoiceSeries'), { style: 'width:90px', placeholder: 'KR' }),
+      field('nextInvoiceNumber', t('nextNumber'), { type: 'number', min: '1', style: 'width:100px', placeholder: '1' })),
+    h('div', { class: 'row', style: 'margin-top:8px' }, h('button', { class: 'primary', onclick: async () => {
+      const profile = Object.fromEntries(Object.entries(f).map(([k, el]) => [k, k === 'nextInvoiceNumber' ? (parseInt(el.value, 10) || 1) : el.value.trim()]));
+      try { await updateDoc(doc(db, 'companies', state.companyId), { profile }); state.company.profile = profile; msg.textContent = t('saved'); }
+      catch (e) { console.error(e); msg.textContent = t('actionFailed'); }
+    } }, t('save')), msg));
+}
+
+// ---------- data retention (GDPR) ----------
+function retentionCard(c) {
+  const days = h('input', { type: 'number', min: '30', max: '3650', value: c.settings?.dataRetentionDays || 365, style: 'width:100px' });
+  const msg = h('span', { class: 'muted' });
+  return h('div', { class: 'card' }, h('h2', {}, t('retention')), h('p', { class: 'muted' }, t('retentionHint')),
+    h('div', { class: 'row' }, days, t('daysWord'), h('button', { class: 'primary', onclick: async () => {
+      const v = Math.min(3650, Math.max(30, parseInt(days.value, 10) || 365));
+      try { await updateDoc(doc(db, 'companies', state.companyId), { settings: { ...(state.company.settings || {}), dataRetentionDays: v } }); days.value = v; msg.textContent = t('saved'); }
+      catch (e) { console.error(e); msg.textContent = t('actionFailed'); }
+    } }, t('save')), msg));
+}
+
 // ---------- subscription ----------
 const BPLANS = ['monthly', 'yearly', 'company', 'contractor_small', 'contractor_medium', 'contractor_large'];
 function billingCard(c, trial) {
@@ -450,10 +482,12 @@ function billingCard(c, trial) {
 }
 
 // ---------- company ----------
-function pageCompany(main) {
+async function pageCompany(main) {
   const page = h('div', { class: 'page' });
   main.append(page);
+  try { state.company = (await getDoc(doc(db, 'companies', state.companyId))).data() || state.company; } catch {}
   const c = state.company || {};
+  const isOwner = c.ownerUid === state.user.uid;
   const name = h('input', { value: c.name || '', style: 'min-width:280px' });
   const msg = h('span', { class: 'muted' });
   const trial = c.plan === 'trial' && c.trialEndsAtMillis ? t('trialUntil', new Date(c.trialEndsAtMillis).toLocaleDateString(lang())) : '';
@@ -463,6 +497,9 @@ function pageCompany(main) {
       catch { msg.textContent = t('actionFailed'); }
     } }, t('save')) : null, msg)),
     billingCard(c, trial),
+    isOwner ? profileCard(c) : null,
+    isOwner ? retentionCard(c) : null,
     h('div', { class: 'card' }, h('h2', {}, t('mobileApp')), h('p', {}, t('mobileHint')),
       h('a', { href: 'https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk' }, t('downloadApk'))));
+  if (isAdmin()) invoiceList({ h, t, db, state, lang }).then(card => page.append(card));
 }
