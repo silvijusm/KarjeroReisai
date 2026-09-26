@@ -17,6 +17,9 @@ import lt.karjeroreisai.app.data.BillingMode
 import lt.karjeroreisai.app.data.GpsPoint
 import lt.karjeroreisai.app.data.Trip
 import lt.karjeroreisai.app.data.WorkSession
+import lt.karjeroreisai.app.data.SyncIdentity
+import lt.karjeroreisai.app.data.SyncWorker
+import lt.karjeroreisai.app.data.SessionSyncStore
 import lt.karjeroreisai.app.location.LocationTrackingService
 
 data class DashboardState(
@@ -38,8 +41,29 @@ data class SessionSummary(
     val earnings: Double
 )
 
-class MainViewModel(app: Application) : AndroidViewModel(app) {
-    private val db = AppDatabase(app)
+data class SyncUiState(val pending: Int = 0, val status: String = "pending", val lastSuccess: Long = 0, val legacyAvailable: Boolean = false)
+
+class MainViewModel(app: Application, val identity: SyncIdentity) : AndroidViewModel(app) {
+    private val db = AppDatabase(app, identity)
+    private val _sync = MutableStateFlow(SyncUiState())
+    val sync: StateFlow<SyncUiState> = _sync.asStateFlow()
+
+    fun syncNow() { SyncWorker.schedule(getApplication(), identity) }
+
+    fun importLegacy() {
+        viewModelScope.launch {
+            val succeeded = withContext(Dispatchers.IO) {
+                runCatching {
+                    SessionSyncStore(db).importLegacy(getApplication())
+                    getApplication<Application>().getSharedPreferences("sync_migration", Context.MODE_PRIVATE)
+                        .edit().putBoolean("legacyImported", true).commit()
+                }.isSuccess
+            }
+            if (succeeded) { syncNow(); loadHistory() }
+            else _dashboard.value = _dashboard.value.copy(statusMessage = AppLanguage.wrap(getApplication()).getString(R.string.sync_import_failed))
+            refresh()
+        }
+    }
 
     private val _dashboard = MutableStateFlow(DashboardState())
     val dashboard: StateFlow<DashboardState> = _dashboard.asStateFlow()
@@ -72,6 +96,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             _dashboard.value = data
+            _sync.value = withContext(Dispatchers.IO) {
+                val context = getApplication<Application>()
+                val preferences = context.getSharedPreferences("sync_${identity.key}", Context.MODE_PRIVATE)
+                val migration = context.getSharedPreferences("sync_migration", Context.MODE_PRIVATE)
+                SyncUiState(SessionSyncStore(db).pendingCount(), preferences.getString("status", "pending") ?: "pending",
+                    preferences.getLong("lastSuccess", 0), identity.canSync && context.getDatabasePath("karjero_reisai.db").exists()
+                        && !migration.getBoolean("legacyImported", false)
+                        && migration.getString("legacyOwner", null).let { it == null || it == identity.key })
+            }
         }
     }
 
@@ -115,6 +148,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             refresh()
+            syncNow()
             onStarted(id)
         }
     }
@@ -149,6 +183,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     AppLanguage.wrap(getApplication()).getString(R.string.trip_duplicate)
             )
             refresh()
+            syncNow()
         }
     }
 
@@ -164,7 +199,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 db.setUnloadingZone(session.id, current.first, current.second)
 
                 val prefs = getApplication<Application>()
-                    .getSharedPreferences(LocationTrackingService.PREFS, Context.MODE_PRIVATE)
+                    .getSharedPreferences(identity.preferencesName, Context.MODE_PRIVATE)
 
                 val start = prefs.getLong(
                     LocationTrackingService.tripStartKey(session.id),
@@ -201,6 +236,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
             _dashboard.value = _dashboard.value.copy(statusMessage = message)
             refresh()
+            syncNow()
         }
     }
 
@@ -210,6 +246,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.IO) { db.undoLastTrip(session.id) }
             _dashboard.value = _dashboard.value.copy(statusMessage = AppLanguage.wrap(getApplication()).getString(R.string.trip_undone))
             refresh()
+            syncNow()
         }
     }
 
@@ -220,6 +257,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _lastEndedId.value = session.id
             _dashboard.value = DashboardState(now = System.currentTimeMillis())
             loadHistory()
+            syncNow()
             onEnded(session.id)
         }
     }
@@ -248,7 +286,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun latestLocation(): Pair<Double, Double>? {
         val prefs = getApplication<Application>()
-            .getSharedPreferences(LocationTrackingService.PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(identity.preferencesName, Context.MODE_PRIVATE)
 
         if (!prefs.getBoolean(LocationTrackingService.KEY_HAS_LATEST, false)) return null
 

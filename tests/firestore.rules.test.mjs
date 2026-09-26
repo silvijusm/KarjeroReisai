@@ -208,11 +208,117 @@ test('cross-company and anonymous membership or vehicle access is denied', async
     await assertFails(getDocs(collection(client, 'companies', 'a', 'vehicles')));
   }
 });
-test('sessions and live locations remain inaccessible until sync rules are implemented', async () => {
+test('invalid sessions and live locations are rejected', async () => {
   await register('alice', 'a'); await seedMember('driver');
   for (const uid of ['alice', 'driver']) {
     await assertFails(setDoc(doc(db(uid), 'companies', 'a', 'sessions', 's'), { driverUid: uid }));
-    await assertFails(getDocs(query(collection(db(uid), 'companies', 'a', 'sessions'), where('driverUid', '==', uid))));
+    await assertSucceeds(getDocs(query(collection(db(uid), 'companies', 'a', 'sessions'), where('driverUid', '==', uid))));
     await assertFails(setDoc(doc(db(uid), 'companies', 'a', 'liveLocations', uid), { lat: 55, lng: 24 }));
+  }
+});
+
+const sessionId = '12345678-1234-1234-1234-123456789abc';
+const sessionPath = `companies/a/sessions/${sessionId}`;
+function sessionData(uid = 'driver', patch = {}) {
+  return { schemaVersion: 1, driverUid: uid, deviceId: sessionId, revision: 1, completeRevision: 0,
+    date: '2026-09-26', startedAt: 100000, endedAt: null, loadingPlace: 'A', unloadingPlace: 'B',
+    truck: 'ABC123', trailer: '', defaultWeight: 27, loadingLat: null, loadingLon: null,
+    unloadingLat: null, unloadingLon: null, zoneRadiusM: 150, autoCount: true,
+    billingMode: 'PER_TRIP', rate: 10, tripsCount: 1, tonnes: 27, km: 7, earnings: 10,
+    updatedAt: serverTimestamp(), ...patch };
+}
+function tripData(patch = {}) {
+  return { tripNumber: 1, timestamp: 110000, latitude: 55, longitude: 24, weight: 27, source: 'MANUAL',
+    startTimestamp: 100000, distanceKm: 7, durationMs: 10000, deleted: false, revision: 1, updatedAt: serverTimestamp(), ...patch };
+}
+function chunkData(patch = {}) {
+  return { encoding: 'polyline5', polyline: '_p~iF~ps|U', times: [110000], accuracies: [5], speeds: [10],
+    pointCount: 1, firstPointId: 1, lastPointId: 1, revision: 1, updatedAt: serverTimestamp(), ...patch };
+}
+async function setupSync() { await register('alice', 'a'); await seedMember('driver'); }
+test('owner and driver can create own sessions, stage children and finish an upload', async () => {
+  await setupSync();
+  for (const uid of ['alice', 'driver']) {
+    const path = `companies/a/sessions/${uid === 'alice' ? '22345678-1234-1234-1234-123456789abc' : sessionId}`;
+    const client = db(uid);
+    await assertSucceeds(getDoc(doc(client, path))); // missing-document probe
+    await assertSucceeds(setDoc(doc(client, path), sessionData(uid)));
+    const batch = writeBatch(client);
+    batch.set(doc(client, path, 'trips', '1'), tripData());
+    batch.set(doc(client, path, 'routeChunks', '0'), chunkData());
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(updateDoc(doc(client, path), { completeRevision: 1, updatedAt: serverTimestamp() }));
+  }
+});
+test('driver cannot forge another driver or write into another tenant', async () => {
+  await setupSync(); await register('bob', 'b');
+  await assertFails(setDoc(doc(db('driver'), sessionPath), sessionData('alice')));
+  await assertFails(setDoc(doc(db('driver'), `companies/b/sessions/${sessionId}`), sessionData()));
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), sessionPath), sessionData()));
+});
+test('driver reads only own work while dispatcher and owner can read company work', async () => {
+  await setupSync(); await seedMember('second'); await seedMember('dispatch', { role: 'dispatcher' });
+  await setDoc(doc(db('driver'), sessionPath), sessionData());
+  await setDoc(doc(db('driver'), sessionPath, 'trips', '1'), tripData());
+  for (const uid of ['driver', 'alice', 'dispatch']) {
+    await assertSucceeds(getDoc(doc(db(uid), sessionPath)));
+    await assertSucceeds(getDocs(collection(db(uid), sessionPath, 'trips')));
+  }
+  await assertFails(getDoc(doc(db('second'), sessionPath)));
+  await assertFails(getDocs(collection(db('second'), sessionPath, 'trips')));
+  await assertFails(getDocs(collection(db('driver'), 'companies/a/sessions')));
+  await assertSucceeds(getDocs(query(collection(db('driver'), 'companies/a/sessions'), where('driverUid', '==', 'driver'))));
+  for (const uid of ['alice', 'dispatch']) await assertSucceeds(getDocs(collection(db(uid), 'companies/a/sessions')));
+});
+test('removal immediately denies reads and uploads but preserves existing history', async () => {
+  await setupSync(); await setDoc(doc(db('driver'), sessionPath), sessionData());
+  await seedMember('driver', { status: 'removed' });
+  await assertFails(getDoc(doc(db('driver'), sessionPath)));
+  await assertFails(updateDoc(doc(db('driver'), sessionPath), { revision: 2, updatedAt: serverTimestamp() }));
+  await assertSucceeds(getDoc(doc(db('alice'), sessionPath)));
+});
+test('retries cannot regress revisions, reopen a completed revision or change ownership', async () => {
+  await setupSync(); const client = db('driver');
+  await setDoc(doc(client, sessionPath), sessionData('driver', { revision: 3 }));
+  await assertFails(setDoc(doc(client, sessionPath), sessionData('driver', { revision: 2 })));
+  await assertFails(updateDoc(doc(client, sessionPath), { deviceId: '22345678-1234-1234-1234-123456789abc', updatedAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(client, sessionPath), { startedAt: 999, updatedAt: serverTimestamp() }));
+  await updateDoc(doc(client, sessionPath), { completeRevision: 3, updatedAt: serverTimestamp() });
+  await assertFails(setDoc(doc(client, sessionPath), sessionData('driver', { revision: 3 })));
+  await assertSucceeds(setDoc(doc(client, sessionPath), sessionData('driver', { revision: 4 })));
+  await assertFails(updateDoc(doc(client, sessionPath), { completeRevision: 3, updatedAt: serverTimestamp() }));
+});
+test('trip undo is a versioned tombstone, physical deletes and late children are denied', async () => {
+  await setupSync(); const client = db('driver');
+  await setDoc(doc(client, sessionPath), sessionData());
+  await setDoc(doc(client, sessionPath, 'trips', '1'), tripData());
+  await updateDoc(doc(client, sessionPath), { completeRevision: 1, updatedAt: serverTimestamp() });
+  await assertFails(updateDoc(doc(client, sessionPath, 'trips', '1'), { deleted: true, updatedAt: serverTimestamp() }));
+  await setDoc(doc(client, sessionPath), sessionData('driver', { revision: 2, tripsCount: 0, tonnes: 0 }));
+  await assertSucceeds(setDoc(doc(client, sessionPath, 'trips', '1'), tripData({ revision: 2, deleted: true })));
+  await assertFails(setDoc(doc(client, sessionPath, 'trips', '1'), tripData({ revision: 1 })));
+  await assertFails(deleteDoc(doc(client, sessionPath, 'trips', '1')));
+  await assertFails(deleteDoc(doc(client, sessionPath)));
+});
+test('session and child payload validation rejects extra authority fields and invalid coordinates', async () => {
+  await setupSync(); const client = db('driver');
+  for (const patch of [{ contractorKm: 7 }, { schemaVersion: 2 }, { loadingLat: 91 }, { rate: -1 }, { endedAt: 1 }]) {
+    await assertFails(setDoc(doc(client, sessionPath), sessionData('driver', patch)));
+  }
+  await setDoc(doc(client, sessionPath), sessionData());
+  for (const patch of [{ latitude: 91 }, { weight: -1 }, { approved: true }, { deleted: 'yes' }]) {
+    await assertFails(setDoc(doc(client, sessionPath, 'trips', '1'), tripData(patch)));
+  }
+  for (const patch of [{ pointCount: 501 }, { times: [] }, { firstPointId: 0 }, { encoding: 'unknown' }]) {
+    await assertFails(setDoc(doc(client, sessionPath, 'routeChunks', '0'), chunkData(patch)));
+  }
+});
+test('end time cannot be reopened and managers cannot alter driver work', async () => {
+  await setupSync(); await seedMember('dispatch', { role: 'dispatcher' });
+  await setDoc(doc(db('driver'), sessionPath), sessionData('driver', { endedAt: 120000 }));
+  await assertFails(setDoc(doc(db('driver'), sessionPath), sessionData('driver', { revision: 2 })));
+  for (const uid of ['alice', 'dispatch']) {
+    await assertFails(updateDoc(doc(db(uid), sessionPath), { km: 100, updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(db(uid), sessionPath, 'trips', '1'), tripData()));
   }
 });

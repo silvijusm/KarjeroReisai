@@ -107,4 +107,17 @@
     <string name="report_auto">Automātiski</string>
     <string name="report_start">Darba sākums</string>
     <string name="report_end">Darba beigas</string>
+    <string name="sync_title">Sinhronizācija</string>
+    <string name="sync_pending">Gaida savienojumu vai nosūtīšanu. Dati ir saglabāti tālrunī.</string>
+    <string name="sync_running">Notiek sinhronizācija…</string>
+    <string name="sync_done">Dati sinhronizēti.</string>
+    <string name="sync_blocked">Nosūtīšana liegta. Pārbaudiet uzņēmuma piekļuvi vai sazinieties ar administratoru. Dati paliek tālrunī.</string>
+    <string name="sync_count">Gaidošās darba sesijas: %1$d</string>
+    <string name="sync_last">Pēdējā sinhronizācija: %1$s</string>
+    <string name="sync_now">Sinhronizēt tagad</string>
+    <string name="sync_import">Pārcelt iepriekšējos tālruņa reisus</string>
+    <string name="sync_import_explanation">Vecajiem ierakstiem nav konta atzīmes. Apstipriniet tikai savus reisus: tie tiks piesaistīti šim kontam un uzņēmumam un augšupielādēti. Sākotnējā kopija paliks tālrunī.</string>
+    <string name="sync_import_failed">Neizdevās pārcelt iepriekšējos reisus. Sākotnējie dati ir saglabāti.</string>
+    <string name="role_driver">Vadītājs</string>
+    <string name="role_dispatcher">Dispečers</string>
 </resources>

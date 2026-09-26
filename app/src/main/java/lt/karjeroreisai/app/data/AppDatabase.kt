@@ -8,6 +8,7 @@ import android.location.Location
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 enum class BillingMode {
     PER_TRIP,
@@ -60,8 +61,9 @@ data class GpsPoint(
     val speed: Float
 )
 
-class AppDatabase(context: Context) :
-    SQLiteOpenHelper(context, "karjero_reisai.db", null, 3) {
+class AppDatabase(context: Context, val identity: SyncIdentity? = null) :
+    SQLiteOpenHelper(context, identity?.databaseName ?: "karjero_reisai.db", null, 4) {
+    private val deviceId = SyncIdentity.deviceId(context)
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -125,6 +127,7 @@ class AppDatabase(context: Context) :
         db.execSQL("CREATE INDEX idx_trips_session ON trips(session_id)")
         db.execSQL("CREATE INDEX idx_gps_session ON gps_points(session_id)")
         db.execSQL("CREATE INDEX idx_gps_session_time ON gps_points(session_id, timestamp)")
+        addSyncSchema(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -145,6 +148,33 @@ class AppDatabase(context: Context) :
             db.execSQL("ALTER TABLE trips ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0")
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_gps_session_time ON gps_points(session_id, timestamp)")
         }
+        if (oldVersion < 4) addSyncSchema(db)
+    }
+
+    private fun addSyncSchema(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE work_sessions ADD COLUMN cloud_id TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE work_sessions ADD COLUMN device_id TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE work_sessions ADD COLUMN revision INTEGER NOT NULL DEFAULT 1")
+        db.execSQL("ALTER TABLE work_sessions ADD COLUMN synced_revision INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE work_sessions ADD COLUMN synced_gps_id INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE work_sessions ADD COLUMN remote INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE trips ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+        db.rawQuery("SELECT id FROM work_sessions", null).use { cursor ->
+            while (cursor.moveToNext()) db.execSQL("UPDATE work_sessions SET cloud_id=?, device_id=? WHERE id=?",
+                arrayOf(UUID.randomUUID().toString(), deviceId, cursor.getLong(0)))
+        }
+        db.execSQL("CREATE UNIQUE INDEX idx_session_cloud ON work_sessions(cloud_id)")
+        db.execSQL("""CREATE TRIGGER session_changed AFTER UPDATE OF end_time, loading_lat, loading_lon,
+            unloading_lat, unloading_lon ON work_sessions WHEN NEW.remote=0
+            BEGIN UPDATE work_sessions SET revision=revision+1 WHERE id=NEW.id; END""")
+        for (table in listOf("trips", "gps_points")) {
+            for (action in listOf("INSERT", "UPDATE", "DELETE")) {
+                val record = if (action == "DELETE") "OLD" else "NEW"
+                db.execSQL("""CREATE TRIGGER ${table}_${action.lowercase()} AFTER $action ON $table
+                    BEGIN UPDATE work_sessions SET revision=revision+1
+                    WHERE id=$record.session_id AND remote=0; END""")
+            }
+        }
     }
 
     fun startSession(
@@ -161,6 +191,8 @@ class AppDatabase(context: Context) :
         val now = System.currentTimeMillis()
         val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(now))
         val values = ContentValues().apply {
+            put("cloud_id", UUID.randomUUID().toString())
+            put("device_id", deviceId)
             put("date", date)
             put("start_time", now)
             putNull("end_time")
@@ -185,7 +217,7 @@ class AppDatabase(context: Context) :
         val values = ContentValues().apply {
             put("end_time", System.currentTimeMillis())
         }
-        writableDatabase.update("work_sessions", values, "id=?", arrayOf(sessionId.toString()))
+        writableDatabase.update("work_sessions", values, "id=? AND remote=0 AND device_id=? AND end_time IS NULL", arrayOf(sessionId.toString(), deviceId))
         return getSession(sessionId)
     }
 
@@ -194,7 +226,7 @@ class AppDatabase(context: Context) :
             put("loading_lat", lat)
             put("loading_lon", lon)
         }
-        writableDatabase.update("work_sessions", values, "id=?", arrayOf(sessionId.toString()))
+        writableDatabase.update("work_sessions", values, "id=? AND remote=0 AND device_id=? AND end_time IS NULL", arrayOf(sessionId.toString(), deviceId))
     }
 
     fun setUnloadingZone(sessionId: Long, lat: Double, lon: Double) {
@@ -202,11 +234,11 @@ class AppDatabase(context: Context) :
             put("unloading_lat", lat)
             put("unloading_lon", lon)
         }
-        writableDatabase.update("work_sessions", values, "id=?", arrayOf(sessionId.toString()))
+        writableDatabase.update("work_sessions", values, "id=? AND remote=0 AND device_id=? AND end_time IS NULL", arrayOf(sessionId.toString(), deviceId))
     }
 
     fun getActiveSession(): WorkSession? =
-        querySession("SELECT * FROM work_sessions WHERE end_time IS NULL ORDER BY id DESC LIMIT 1", null)
+        querySession("SELECT * FROM work_sessions WHERE end_time IS NULL AND remote=0 AND device_id=? ORDER BY id DESC LIMIT 1", arrayOf(deviceId))
 
     fun getSession(sessionId: Long): WorkSession? =
         querySession("SELECT * FROM work_sessions WHERE id=? LIMIT 1", arrayOf(sessionId.toString()))
@@ -239,10 +271,13 @@ class AppDatabase(context: Context) :
         durationMs: Long,
         preventDuplicateWithinMs: Long = 60_000L
     ): Long {
+        writableDatabase.beginTransaction()
+        try {
+        if (!isEditable(sessionId)) return -1L
         val now = System.currentTimeMillis()
 
         readableDatabase.rawQuery(
-            "SELECT timestamp FROM trips WHERE session_id=? ORDER BY timestamp DESC LIMIT 1",
+            "SELECT timestamp FROM trips WHERE session_id=? AND deleted=0 ORDER BY timestamp DESC LIMIT 1",
             arrayOf(sessionId.toString())
         ).use { c ->
             if (c.moveToFirst()) {
@@ -264,16 +299,20 @@ class AppDatabase(context: Context) :
             put("distance_km", distanceKm.coerceAtLeast(0.0))
             put("duration_ms", durationMs.coerceAtLeast(0L))
         }
-        return writableDatabase.insertOrThrow("trips", null, values)
+        val inserted = writableDatabase.insertOrThrow("trips", null, values)
+        writableDatabase.setTransactionSuccessful()
+        return inserted
+        } finally { writableDatabase.endTransaction() }
     }
 
     fun undoLastTrip(sessionId: Long) {
+        if (!isEditable(sessionId)) return
         writableDatabase.execSQL(
             """
-            DELETE FROM trips
+            UPDATE trips SET deleted=1
             WHERE id = (
                 SELECT id FROM trips
-                WHERE session_id=?
+                WHERE session_id=? AND deleted=0
                 ORDER BY trip_number DESC
                 LIMIT 1
             )
@@ -284,7 +323,7 @@ class AppDatabase(context: Context) :
 
     fun getTripCount(sessionId: Long): Int {
         readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM trips WHERE session_id=?",
+            "SELECT COUNT(*) FROM trips WHERE session_id=? AND deleted=0",
             arrayOf(sessionId.toString())
         ).use { c ->
             c.moveToFirst()
@@ -294,7 +333,7 @@ class AppDatabase(context: Context) :
 
     fun getLastTrip(sessionId: Long): Trip? {
         readableDatabase.rawQuery(
-            "SELECT * FROM trips WHERE session_id=? ORDER BY trip_number DESC LIMIT 1",
+            "SELECT * FROM trips WHERE session_id=? AND deleted=0 ORDER BY trip_number DESC LIMIT 1",
             arrayOf(sessionId.toString())
         ).use { c ->
             return if (c.moveToFirst()) tripFromCursor(c) else null
@@ -304,7 +343,7 @@ class AppDatabase(context: Context) :
     fun getTrips(sessionId: Long): List<Trip> {
         val out = mutableListOf<Trip>()
         readableDatabase.rawQuery(
-            "SELECT * FROM trips WHERE session_id=? ORDER BY trip_number ASC",
+            "SELECT * FROM trips WHERE session_id=? AND deleted=0 ORDER BY trip_number ASC",
             arrayOf(sessionId.toString())
         ).use { c ->
             while (c.moveToNext()) out += tripFromCursor(c)
@@ -320,6 +359,9 @@ class AppDatabase(context: Context) :
         accuracy: Float,
         speed: Float
     ) {
+        writableDatabase.beginTransaction()
+        try {
+        if (!isEditable(sessionId)) return
         val values = ContentValues().apply {
             put("session_id", sessionId)
             put("timestamp", timestamp)
@@ -328,7 +370,9 @@ class AppDatabase(context: Context) :
             put("accuracy", accuracy)
             put("speed", speed)
         }
-        writableDatabase.insert("gps_points", null, values)
+        writableDatabase.insertOrThrow("gps_points", null, values)
+        writableDatabase.setTransactionSuccessful()
+        } finally { writableDatabase.endTransaction() }
     }
 
     fun getGpsPoints(sessionId: Long): List<GpsPoint> {
@@ -404,7 +448,7 @@ class AppDatabase(context: Context) :
         return meters / 1000.0
     }
 
-    private fun tripFromCursor(c: android.database.Cursor): Trip =
+    internal fun tripFromCursor(c: android.database.Cursor): Trip =
         Trip(
             id = c.getLong(c.getColumnIndexOrThrow("id")),
             sessionId = c.getLong(c.getColumnIndexOrThrow("session_id")),
@@ -419,7 +463,7 @@ class AppDatabase(context: Context) :
             durationMs = c.getLong(c.getColumnIndexOrThrow("duration_ms"))
         )
 
-    private fun sessionFromCursor(c: android.database.Cursor): WorkSession =
+    internal fun sessionFromCursor(c: android.database.Cursor): WorkSession =
         WorkSession(
             id = c.getLong(c.getColumnIndexOrThrow("id")),
             date = c.getString(c.getColumnIndexOrThrow("date")),
@@ -447,4 +491,9 @@ class AppDatabase(context: Context) :
         val index = getColumnIndexOrThrow(name)
         return if (isNull(index)) null else getDouble(index)
     }
+
+    private fun isEditable(id: Long): Boolean = readableDatabase.rawQuery(
+        "SELECT id FROM work_sessions WHERE id=? AND remote=0 AND device_id=? AND end_time IS NULL",
+        arrayOf(id.toString(), deviceId)
+    ).use { it.moveToFirst() }
 }

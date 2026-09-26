@@ -107,4 +107,17 @@
     <string name="report_auto">Автоматически</string>
     <string name="report_start">Начало работы</string>
     <string name="report_end">Конец работы</string>
+    <string name="sync_title">Синхронизация</string>
+    <string name="sync_pending">Ожидание связи или отправки. Данные сохранены в телефоне.</string>
+    <string name="sync_running">Синхронизация…</string>
+    <string name="sync_done">Данные синхронизированы.</string>
+    <string name="sync_blocked">Отправка запрещена. Проверьте доступ к компании или обратитесь к администратору. Данные остались в телефоне.</string>
+    <string name="sync_count">Рабочих сессий в очереди: %1$d</string>
+    <string name="sync_last">Последняя синхронизация: %1$s</string>
+    <string name="sync_now">Синхронизировать сейчас</string>
+    <string name="sync_import">Перенести старые рейсы телефона</string>
+    <string name="sync_import_explanation">В старых записях нет владельца. Подтверждайте только свои рейсы: они будут привязаны к этой учётной записи и компании и отправлены в облако. Исходная копия останется в телефоне.</string>
+    <string name="sync_import_failed">Не удалось перенести старые рейсы. Исходные данные сохранены.</string>
+    <string name="role_driver">Водитель</string>
+    <string name="role_dispatcher">Диспетчер</string>
 </resources>

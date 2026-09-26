@@ -1,0 +1,18 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "driverUid", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "routeChunks", "fieldPath": "polyline", "indexes": [] },
+    { "collectionGroup": "routeChunks", "fieldPath": "times", "indexes": [] },
+    { "collectionGroup": "routeChunks", "fieldPath": "accuracies", "indexes": [] },
+    { "collectionGroup": "routeChunks", "fieldPath": "speeds", "indexes": [] }
+  ]
+}

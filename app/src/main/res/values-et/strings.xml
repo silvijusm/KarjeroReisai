@@ -107,4 +107,17 @@
     <string name="report_auto">Automaatne</string>
     <string name="report_start">Töö algus</string>
     <string name="report_end">Töö lõpp</string>
+    <string name="sync_title">Sünkroonimine</string>
+    <string name="sync_pending">Ootan ühendust või üleslaadimist. Andmed on telefonis salvestatud.</string>
+    <string name="sync_running">Sünkroonimine…</string>
+    <string name="sync_done">Andmed sünkroonitud.</string>
+    <string name="sync_blocked">Üleslaadimine keelatud. Kontrollige ettevõtte ligipääsu või pöörduge administraatori poole. Andmed jäävad telefoni.</string>
+    <string name="sync_count">Ootel tööseansse: %1$d</string>
+    <string name="sync_last">Viimati sünkroonitud: %1$s</string>
+    <string name="sync_now">Sünkrooni kohe</string>
+    <string name="sync_import">Impordi telefoni varasemad veod</string>
+    <string name="sync_import_explanation">Varasematel kirjetel puudub konto. Kinnitage ainult enda veod: need seotakse selle konto ja ettevõttega ning laaditakse pilve. Algne koopia jääb telefoni.</string>
+    <string name="sync_import_failed">Varasemaid vedusid ei saanud importida. Algandmed on alles.</string>
+    <string name="role_driver">Juht</string>
+    <string name="role_dispatcher">Dispetšer</string>
 </resources>

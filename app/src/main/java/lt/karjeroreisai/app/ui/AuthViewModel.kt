@@ -1,6 +1,11 @@
 package lt.karjeroreisai.app.ui
 
 import android.app.Application
+import android.content.Intent
+import lt.karjeroreisai.app.location.LocationTrackingService
+import lt.karjeroreisai.app.data.SyncIdentity
+import lt.karjeroreisai.app.data.SyncWorker
+import com.google.firebase.firestore.ListenerRegistration
 import lt.karjeroreisai.app.R
 import lt.karjeroreisai.app.AppLanguage
 import androidx.lifecycle.AndroidViewModel
@@ -27,6 +32,7 @@ data class AuthUiState(
 class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private fun message(id: Int) = AppLanguage.wrap(getApplication()).getString(id)
     private var registering = false
+    private var profileListener: ListenerRegistration? = null
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
@@ -37,6 +43,8 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         if (registering) return@AuthStateListener
         val user = firebaseAuth.currentUser
         if (user == null) {
+            profileListener?.remove()
+            stopAccountWork()
             _state.value = AuthUiState(loading = false)
         } else {
             loadProfile(user)
@@ -172,6 +180,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun signOut() {
+        stopAccountWork()
         auth.signOut()
     }
 
@@ -189,44 +198,37 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             infoMessage = null
         )
 
-        firestore.collection("users").document(user.uid).get()
-            .addOnSuccessListener { document ->
-                if (auth.currentUser?.uid != user.uid) return@addOnSuccessListener
-                val role = document.getString("role")
-                val companyId = document.getString("companyId")
-                val validProfile = document.exists() && when (role) {
-                    "company_admin" -> !companyId.isNullOrBlank()
-                    "super_admin" -> true
-                    else -> false
-                }
-                if (!validProfile) {
-                    auth.signOut()
-                    _state.value = AuthUiState(loading = false, error = message(R.string.profile_failed))
-                    return@addOnSuccessListener
-                }
-                _state.value = AuthUiState(
-                    loading = false,
-                    signedIn = true,
-                    uid = user.uid,
-                    email = user.email.orEmpty(),
-                    name = document.getString("name").orEmpty(),
-                    companyId = companyId,
-                    role = role,
-                    error = null
-                )
+        profileListener?.remove()
+        profileListener = firestore.collection("users").document(user.uid).addSnapshotListener { document, failure ->
+            if (auth.currentUser?.uid != user.uid) return@addSnapshotListener
+            val role = document?.getString("role")
+            val companyId = document?.getString("companyId")
+            val validProfile = failure == null && document?.exists() == true && when (role) {
+                "company_admin" -> !companyId.isNullOrBlank()
+                "driver", "dispatcher" -> !companyId.isNullOrBlank() && document.getString("membershipStatus") == "active"
+                "super_admin" -> true
+                else -> false
             }
-            .addOnFailureListener { error ->
-                if (auth.currentUser?.uid != user.uid) return@addOnFailureListener
+            if (!validProfile) {
+                stopAccountWork()
                 auth.signOut()
-                _state.value = AuthUiState(
-                    loading = false,
-                    signedIn = false,
-                    error = message(R.string.profile_failed)
-                )
+                _state.value = AuthUiState(loading = false, error = message(R.string.profile_failed))
+                return@addSnapshotListener
             }
+            if (_state.value.signedIn && _state.value.companyId != companyId) stopAccountWork()
+            _state.value = AuthUiState(loading = false, signedIn = true, uid = user.uid,
+                email = user.email.orEmpty(), name = document?.getString("name").orEmpty(), companyId = companyId, role = role)
+        }
+    }
+
+    private fun stopAccountWork() {
+        val context = getApplication<Application>()
+        context.stopService(Intent(context, LocationTrackingService::class.java))
+        _state.value.uid?.let { SyncWorker.stop(context, SyncIdentity(it, _state.value.companyId.orEmpty())) }
     }
 
     override fun onCleared() {
+        profileListener?.remove()
         auth.removeAuthStateListener(authListener)
         super.onCleared()
     }
