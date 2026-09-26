@@ -90,6 +90,7 @@ fun KarjeroReisaiApp(
     var companyPlan by remember(authState.uid, authState.companyId) { mutableStateOf<String?>(null) }
     var trialEndsAtMillis by remember(authState.uid, authState.companyId) { mutableLongStateOf(0L) }
     var entitlementLoading by remember(authState.uid, authState.companyId) { mutableStateOf(false) }
+    var retentionDays by remember(authState.companyId) { mutableStateOf(365) }
 
     val activeMember = authState.isMember && authState.memberStatus == "active"
     DisposableEffect(authState.signedIn, authState.role, authState.companyId, activeMember) {
@@ -103,6 +104,7 @@ fun KarjeroReisaiApp(
                     if (failure == null && document != null && document.exists()) {
                         companyPlan = document.getString("plan")
                         trialEndsAtMillis = document.getLong("trialEndsAtMillis") ?: 0L
+                        retentionDays = ((document.get("settings") as? Map<*, *>)?.get("dataRetentionDays") as? Number)?.toInt() ?: 365
                     } else {
                         companyPlan = null
                         trialEndsAtMillis = 0L
@@ -214,6 +216,11 @@ fun KarjeroReisaiApp(
                     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.Center) {
                         Text(stringResource(R.string.connecting))
                     }
+                }
+
+                // Data-protection notice before the first work for a company (GDPR).
+                authState.isMember && authState.memberStatus == "active" && authState.role != "loader" && !authState.privacyAcked -> {
+                    PrivacyNoticeScreen(authState, retentionDays, onAccept = authViewModel::acknowledgePrivacy, onSignOut = authViewModel::signOut)
                 }
 
                 authState.role == "loader" && authState.memberStatus == "active" -> {

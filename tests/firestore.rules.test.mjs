@@ -357,3 +357,33 @@ test('object codes, links and carrier records are server-written only', async ()
   await assertFails(setDoc(doc(db('bob'), 'objectCodes', 'OB-AAAAAA'), { contractorId: 'b' }));
   await assertSucceeds(getDoc(doc(db('jonas'), 'companies/a/objectLinks/o1')));
 });
+
+// ---- BDAR ir sąskaitos ----
+test('member records only their own privacy acknowledgement', async () => {
+  await team();
+  await assertSucceeds(updateDoc(doc(db('jonas'), 'companies/a/members/jonas'), { privacyAckAtMillis: 1000 }));
+  await assertFails(updateDoc(doc(db('jonas'), 'companies/a/members/jonas'), { status: 'active', role: 'dispatcher' }));
+  await assertFails(updateDoc(doc(db('jonas'), 'companies/a/members/petras'), { privacyAckAtMillis: 1000 }));
+});
+test('owner edits company profile and retention within limits', async () => {
+  await team();
+  await assertSucceeds(updateDoc(doc(db('alice'), 'companies', 'a'), { profile: { code: '123', vat: 'LT1', iban: 'LT00', invoiceSeries: 'KR', nextInvoiceNumber: 1 } }));
+  await assertSucceeds(updateDoc(doc(db('alice'), 'companies', 'a'), { settings: { dataRetentionDays: 180 } }));
+  await assertFails(updateDoc(doc(db('alice'), 'companies', 'a'), { settings: { dataRetentionDays: 5 } }));
+  await assertFails(updateDoc(doc(db('alice'), 'companies', 'a'), { settings: { dataRetentionDays: 180, plan: 'paid' } }));
+  await assertFails(updateDoc(doc(db('disp'), 'companies', 'a'), { profile: { code: 'x' } }));
+  await assertFails(updateDoc(doc(db('jonas'), 'companies', 'a'), { settings: { dataRetentionDays: 60 } }));
+});
+const invoice = (patch = {}) => ({ number: 'KR-1', series: 'KR', dateStr: '2026-09-26', seller: { name: 'A' }, buyer: { name: 'B' },
+  lines: [{ desc: 'Smėlis', qty: 10, unit: 'reis.', price: 50, amount: 500 }], vatRate: 21, net: 500, vat: 105, total: 605,
+  createdAtMillis: 1, createdBy: 'alice', ...patch });
+test('owner issues immutable invoices; drivers cannot see or write them', async () => {
+  await team();
+  await assertSucceeds(setDoc(doc(db('alice'), 'companies/a/invoices/i1'), invoice()));
+  await assertFails(updateDoc(doc(db('alice'), 'companies/a/invoices/i1'), { total: 1 }));
+  await assertFails(deleteDoc(doc(db('alice'), 'companies/a/invoices/i1')));
+  await assertFails(setDoc(doc(db('alice'), 'companies/a/invoices/i2'), invoice({ createdBy: 'bob' })));
+  await assertFails(setDoc(doc(db('jonas'), 'companies/a/invoices/i3'), invoice({ createdBy: 'jonas' })));
+  await assertFails(getDoc(doc(db('jonas'), 'companies/a/invoices/i1')));
+  await assertSucceeds(getDoc(doc(db('disp'), 'companies/a/invoices/i1')));
+});

@@ -229,4 +229,19 @@
     <string name="bplan_contractor_large">Contractor: unlimited – €199/month</string>
     <string name="seats_billed">Drivers billed: %1$d</string>
     <string name="payment_failed_grace">Payment failed. Update your card by %1$s or new work cannot be started.</string>
+    <string name="privacy_title">Information about your data</string>
+    <string name="privacy_intro">Before you start working for “%1$s”, please read what data is collected.</string>
+    <string name="privacy_what">What is collected</string>
+    <string name="privacy_what_text">Location (GPS), speed, route, trips, loads, vehicle plate, work start and end.</string>
+    <string name="privacy_when">When</string>
+    <string name="privacy_when_text">Only during work – from “Start work” to “End work”. A permanent notification is shown meanwhile. No location after work.</string>
+    <string name="privacy_who">Who can see it</string>
+    <string name="privacy_who_text">The administrator and dispatcher of “%1$s”. On a contractor site, the contractor sees your truck only on that site. Other drivers cannot see your data.</string>
+    <string name="privacy_how_long">How long it is kept</string>
+    <string name="privacy_how_long_text">Precise GPS points are deleted automatically after %1$d days. Trip summaries may remain for reports and settlements.</string>
+    <string name="privacy_rights">Your rights</string>
+    <string name="privacy_rights_text">In Settings → “My data” you can download your data. For questions contact your company or info.karjeroreisai@gmail.com.</string>
+    <string name="privacy_accept">I have read this</string>
+    <string name="my_data">My data – download (Excel)</string>
+    <string name="my_data_hint">All your work sessions and trips in this company (CSV file).</string>
 </resources>

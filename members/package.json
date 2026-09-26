@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check index.js && node --check members.js"
+    "check": "node --check index.js && node --check members.js && node --check retention.js"
   },
   "dependencies": {
     "firebase-admin": "13.10.0",

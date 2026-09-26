@@ -229,4 +229,19 @@
     <string name="bplan_contractor_large">Būvuzņēmējs: neierobežoti – 199 €/mēn.</string>
     <string name="seats_billed">Apmaksāti vadītāji: %1$d</string>
     <string name="payment_failed_grace">Maksājums neizdevās. Atjauniniet karti līdz %1$s.</string>
+    <string name="privacy_title">Informācija par jūsu datiem</string>
+    <string name="privacy_intro">Pirms sākat strādāt uzņēmumā „%1$s“, iepazīstieties, kādi dati tiek vākti.</string>
+    <string name="privacy_what">Kas tiek vākts</string>
+    <string name="privacy_what_text">Atrašanās vieta (GPS), ātrums, maršruts, reisi, iekraušanas, numurs, darba sākums un beigas.</string>
+    <string name="privacy_when">Kad</string>
+    <string name="privacy_when_text">Tikai darba laikā – no „Sākt darbu“ līdz „Beigt darbu“.</string>
+    <string name="privacy_who">Kas redz</string>
+    <string name="privacy_who_text">„%1$s“ administrators un dispečers. Citi vadītāji jūsu datus neredz.</string>
+    <string name="privacy_how_long">Cik ilgi glabā</string>
+    <string name="privacy_how_long_text">Precīzie GPS punkti tiek dzēsti pēc %1$d dienām.</string>
+    <string name="privacy_rights">Jūsu tiesības</string>
+    <string name="privacy_rights_text">Iestatījumos „Mani dati“ varat lejupielādēt savus datus.</string>
+    <string name="privacy_accept">Esmu iepazinies</string>
+    <string name="my_data">Mani dati – lejupielādēt (Excel)</string>
+    <string name="my_data_hint">Visas jūsu darba sesijas un reisi (CSV).</string>
 </resources>

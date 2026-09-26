@@ -29,7 +29,9 @@ data class AuthUiState(
     val needsCompany: Boolean = false,
     /** Driver / dispatcher membership: pending, active (null while loading or for owners). */
     val memberStatus: String? = null,
-    val companyName: String = ""
+    val companyName: String = "",
+    /** Driver confirmed the data-protection notice (owners do not need it). */
+    val privacyAcked: Boolean = true
 ) {
     val isMember: Boolean get() = role == "driver" || role == "dispatcher" || role == "loader"
     val isCompanyAdmin: Boolean get() = role == "company_admin" || role == "super_admin"
@@ -259,6 +261,15 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             }
     }
 
+    /** Records that the member read the data-protection notice. */
+    fun acknowledgePrivacy() {
+        val uid = auth.currentUser?.uid ?: return
+        val companyId = _state.value.companyId ?: return
+        firestore.collection("companies").document(companyId).collection("members").document(uid)
+            .update("privacyAckAtMillis", System.currentTimeMillis())
+            .addOnFailureListener { _state.value = _state.value.copy(error = message(R.string.action_failed)) }
+    }
+
     fun signOut() {
         stopMemberListener()
         auth.signOut()
@@ -338,7 +349,8 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     _state.value = _state.value.copy(
                         memberStatus = status,
                         role = doc.getString("role") ?: _state.value.role,
-                        companyName = doc.getString("companyName").orEmpty()
+                        companyName = doc.getString("companyName").orEmpty(),
+                        privacyAcked = doc.getLong("privacyAckAtMillis") != null
                     )
                 } else {
                     // Rejected, removed or cancelled: show the join screen.

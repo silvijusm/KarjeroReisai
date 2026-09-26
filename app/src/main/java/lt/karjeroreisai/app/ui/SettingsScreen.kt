@@ -56,6 +56,7 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
                 } else if (auth.role == "company_admin") {
                     SubscriptionPanel(auth)
                 }
+                if (!auth.companyId.isNullOrBlank()) MyDataButton(auth)
                 if (working) Text(stringResource(R.string.end_before_logout))
                 OutlinedButton(onClick = onLogout, enabled = !working && !auth.loading, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.sign_out))

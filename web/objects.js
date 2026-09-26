@@ -1,6 +1,7 @@
 // Contractor sites (objects): settings, carriers, live vehicles, loads, waybills.
 // Carrier companies see the sites they joined and the same load numbers.
 import { doc, collection, onSnapshot, query, where, getDocs, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { invoiceForm } from './invoices.js';
 
 let ctx; // helpers from app.js
 let unsub = [];
@@ -61,7 +62,12 @@ async function carrierLoads(link) {
       const snap = await getDocs(query(collection(ctx.db, 'companies', link.contractorId, 'objects', link.objectId, 'loads'),
         where('carrierId', '==', state.companyId), where('loadedAtMillis', '>=', range.from()), where('loadedAtMillis', '<', range.to())));
       const loads = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status !== 'cancelled').sort((a, b) => a.loadedAtMillis - b.loadedAtMillis);
-      out.replaceChildren(summaryTable(loads, 'plate'), loadsTable(loads, null), csvButton(loads, `${link.objectName}`));
+      const canInvoice = state.company?.ownerUid === state.user.uid;
+      const invoiceBox = h('div');
+      out.replaceChildren(summaryTable(loads, 'plate'), loadsTable(loads, null),
+        h('div', { class: 'row', style: 'margin-top:8px' }, csvButton(loads, `${link.objectName}`),
+          canInvoice ? h('button', { class: 'primary', onclick: () => invoiceBox.replaceChildren(invoiceForm(ctx, link, loads, range.label(), range.from(), range.to())) }, ctx.t('issueInvoiceBtn')) : null),
+        invoiceBox);
     } catch (e) { console.error(e); out.replaceChildren(h('div', { class: 'err' }, t('loadFailed'))); }
   };
   dlg.append(h('div', { class: 'row' }, range.el, h('button', { class: 'primary', onclick: run }, t('show'))), out);

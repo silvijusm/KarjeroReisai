@@ -229,4 +229,19 @@
     <string name="bplan_contractor_large">Töövõtja: piiramatult – 199 €/kuu</string>
     <string name="seats_billed">Arveldatud juhte: %1$d</string>
     <string name="payment_failed_grace">Makse ebaõnnestus. Uuendage kaarti enne %1$s.</string>
+    <string name="privacy_title">Teave teie andmete kohta</string>
+    <string name="privacy_intro">Enne kui alustate tööd ettevõttes „%1$s“, lugege, milliseid andmeid kogutakse.</string>
+    <string name="privacy_what">Mida kogutakse</string>
+    <string name="privacy_what_text">Asukoht (GPS), kiirus, marsruut, reisid, laadimised, sõiduki number, töö algus ja lõpp.</string>
+    <string name="privacy_when">Millal</string>
+    <string name="privacy_when_text">Ainult töö ajal – „Alusta tööd“ kuni „Lõpeta töö“.</string>
+    <string name="privacy_who">Kes näeb</string>
+    <string name="privacy_who_text">„%1$s“ administraator ja dispetšer. Teised juhid teie andmeid ei näe.</string>
+    <string name="privacy_how_long">Kui kaua säilitatakse</string>
+    <string name="privacy_how_long_text">Täpsed GPS-punktid kustutatakse %1$d päeva pärast.</string>
+    <string name="privacy_rights">Teie õigused</string>
+    <string name="privacy_rights_text">Seadetes „Minu andmed“ saate oma andmed alla laadida.</string>
+    <string name="privacy_accept">Olen tutvunud</string>
+    <string name="my_data">Minu andmed – laadi alla (Excel)</string>
+    <string name="my_data_hint">Kõik teie töösessioonid ja reisid (CSV).</string>
 </resources>

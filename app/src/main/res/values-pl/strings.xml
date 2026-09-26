@@ -229,4 +229,19 @@
     <string name="bplan_contractor_large">Wykonawca: bez limitu – 199 €/mies.</string>
     <string name="seats_billed">Opłacani kierowcy: %1$d</string>
     <string name="payment_failed_grace">Płatność nieudana. Zaktualizuj kartę do %1$s.</string>
+    <string name="privacy_title">Informacja o Twoich danych</string>
+    <string name="privacy_intro">Zanim zaczniesz pracę dla „%1$s”, zapoznaj się, jakie dane są zbierane.</string>
+    <string name="privacy_what">Co jest zbierane</string>
+    <string name="privacy_what_text">Lokalizacja (GPS), prędkość, trasa, kursy, załadunki, numer pojazdu, początek i koniec pracy.</string>
+    <string name="privacy_when">Kiedy</string>
+    <string name="privacy_when_text">Tylko w czasie pracy – od „Rozpocznij pracę” do „Zakończ pracę”.</string>
+    <string name="privacy_who">Kto widzi</string>
+    <string name="privacy_who_text">Administrator i dyspozytor „%1$s”. Inni kierowcy nie widzą Twoich danych.</string>
+    <string name="privacy_how_long">Jak długo przechowywane</string>
+    <string name="privacy_how_long_text">Dokładne punkty GPS są usuwane po %1$d dniach.</string>
+    <string name="privacy_rights">Twoje prawa</string>
+    <string name="privacy_rights_text">W Ustawieniach „Moje dane” możesz pobrać swoje dane.</string>
+    <string name="privacy_accept">Zapoznałem(-am) się</string>
+    <string name="my_data">Moje dane – pobierz (Excel)</string>
+    <string name="my_data_hint">Wszystkie Twoje sesje i kursy (CSV).</string>
 </resources>
