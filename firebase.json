@@ -62,6 +62,18 @@
         ]
       }
     ],
-    "cleanUrls": true
+    "cleanUrls": true,
+    "redirects": [
+      {
+        "source": "/apk",
+        "destination": "https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk",
+        "type": 302
+      },
+      {
+        "source": "/pagalba",
+        "destination": "https://silvijusm.github.io/KarjeroReisai/site/pagalba.html",
+        "type": 302
+      }
+    ]
   }
 }
