@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Firestore authorization regression tests",
   "scripts": {
-    "test:rules": "firebase emulators:exec --project demo-karjeroreisai --only firestore \"node --test --test-concurrency=1 tests/firestore.rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --project demo-karjeroreisai --only firestore \"node --test --test-concurrency=1 tests/firestore.rules.test.mjs functions/test/company.integration.test.js\""
   },
   "repository": {
     "type": "git",
