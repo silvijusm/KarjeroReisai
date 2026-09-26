@@ -27,6 +27,21 @@
         "npm --prefix \"$RESOURCE_DIR\" run check",
         "npm --prefix \"$RESOURCE_DIR\" test"
       ]
+    },
+    {
+      "source": "members",
+      "codebase": "members",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        ".env*",
+        "test",
+        "*.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run check",
+        "npm --prefix \"$RESOURCE_DIR\" test"
+      ]
     }
   ]
 }

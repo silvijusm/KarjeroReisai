@@ -4,7 +4,7 @@
   "description": "Firestore authorization regression tests",
   "scripts": {
     "test:rules": "firebase emulators:exec --project demo-karjeroreisai --only firestore \"node --test --test-concurrency=1 tests/firestore.rules.test.mjs\"",
-    "deploy:members": "npm ci --prefix functions --no-audit --no-fund && firebase deploy --project karjieroreisai --only firestore:rules,functions:billing:companyCode,functions:billing:joinCompany,functions:billing:cancelJoin,functions:billing:approveMember,functions:billing:rejectMember,functions:billing:removeMember,functions:billing:setMemberRole"
+    "deploy:members": "npm ci --prefix members --no-audit --no-fund && firebase deploy --project karjieroreisai --only firestore:rules,functions:members"
   },
   "repository": {
     "type": "git",
