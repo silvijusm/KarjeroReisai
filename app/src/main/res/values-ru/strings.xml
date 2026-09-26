@@ -221,4 +221,12 @@
     <string name="check_more_loads">⚠ Погрузок больше, чем рейсов</string>
     <string name="check_more_trips">⚠ Рейсов больше, чем погрузок</string>
     <string name="loads_vs_trips">Погружено %1$d · Рейсов %2$d</string>
+    <string name="bplan_monthly">Месячная – 5 €/мес.</string>
+    <string name="bplan_yearly">Годовая – 55 €/год</string>
+    <string name="bplan_company">Компаниям – 3 €/водителя/мес. (от 3)</string>
+    <string name="bplan_contractor_small">Подрядчик: до 10 авто – 49 €/мес.</string>
+    <string name="bplan_contractor_medium">Подрядчик: до 30 авто – 99 €/мес.</string>
+    <string name="bplan_contractor_large">Подрядчик: без ограничений – 199 €/мес.</string>
+    <string name="seats_billed">Оплачивается водителей: %1$d</string>
+    <string name="payment_failed_grace">Платёж не прошёл. Обновите карту до %1$s, иначе новую работу начать нельзя.</string>
 </resources>

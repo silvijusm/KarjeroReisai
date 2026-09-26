@@ -221,4 +221,12 @@
     <string name="check_more_loads">⚠ Pakrovimų daugiau nei reisų</string>
     <string name="check_more_trips">⚠ Reisų daugiau nei pakrovimų</string>
     <string name="loads_vs_trips">Pakrauta %1$d · Reisų %2$d</string>
+    <string name="bplan_monthly">Mėnesio – 5 €/mėn.</string>
+    <string name="bplan_yearly">Metinė – 55 €/metus</string>
+    <string name="bplan_company">Įmonėms – 3 €/vairuotojui/mėn. (nuo 3)</string>
+    <string name="bplan_contractor_small">Rangovas: iki 10 aut. – 49 €/mėn.</string>
+    <string name="bplan_contractor_medium">Rangovas: iki 30 aut. – 99 €/mėn.</string>
+    <string name="bplan_contractor_large">Rangovas: neribotai – 199 €/mėn.</string>
+    <string name="seats_billed">Apmokama vairuotojų: %1$d</string>
+    <string name="payment_failed_grace">Mokėjimas nepavyko. Pakeiskite kortelę iki %1$s, kitaip naujų darbų pradėti nebus galima.</string>
 </resources>

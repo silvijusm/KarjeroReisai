@@ -21,7 +21,43 @@ export function subscriptionPlan(subscription) {
   return subscription?.status === 'active' ? 'paid' : 'inactive';
 }
 
+// Plans the customer can choose. Prices are found by Stripe lookup_key, so moving
+// from the sandbox to live needs no code change.
+export const PLANS = {
+  monthly: 'karjeroreisai_monthly',
+  yearly: 'karjeroreisai_yearly',
+  company: 'karjeroreisai_company_per_driver',
+  contractor_small: 'karjeroreisai_contractor_small',
+  contractor_medium: 'karjeroreisai_contractor_medium',
+  contractor_large: 'karjeroreisai_contractor_large',
+};
+export const MIN_COMPANY_SEATS = 3;
+export const GRACE_MS = 7 * 86400000;
+
 export function createBillingService({ db, stripe, config, now = Date.now }) {
+  const plans = config.plans || {};
+
+  // Company plan: 3 € per active driver, at least 3.
+  async function seatsFor(companyId) {
+    const snap = await db.collection(`companies/${companyId}/members`).where('status', '==', 'active').get();
+    const drivers = snap.docs.filter(d => (d.data?.() || {}).role === 'driver').length;
+    return Math.max(MIN_COMPANY_SEATS, drivers);
+  }
+
+  async function priceFor(plan) {
+    if (!plan && config.priceId) return config.priceId; // legacy single price
+    const key = plans[plan];
+    if (!key) throw new HttpsError('invalid-argument', 'Unknown plan.');
+    const list = await stripe.prices.list({ lookup_keys: [key], active: true, limit: 1 });
+    const price = list.data?.[0]?.id;
+    if (!price) throw new HttpsError('failed-precondition', 'Price is not configured.');
+    return price;
+  }
+
+  function planOf(sub) {
+    const key = sub?.items?.data?.[0]?.price?.lookup_key;
+    return Object.keys(plans).find(p => plans[p] === key) || null;
+  }
   async function owner(auth) {
     if (!auth?.uid) throw new HttpsError('unauthenticated', 'Sign in first.');
     const profile = (await db.doc(`users/${auth.uid}`).get()).data();
@@ -34,7 +70,7 @@ export function createBillingService({ db, stripe, config, now = Date.now }) {
   }
 
   function enabled() {
-    if (!config.enabled || !config.priceId || !config.returnUrl) throw new HttpsError('failed-precondition', 'Billing is not configured.');
+    if (!config.enabled || !(config.priceId || Object.keys(plans).length) || !config.returnUrl) throw new HttpsError('failed-precondition', 'Billing is not configured.');
     safeReturnUrl(config.returnUrl);
   }
 
@@ -62,13 +98,16 @@ export function createBillingService({ db, stripe, config, now = Date.now }) {
     async status(auth) {
       const { ref } = await owner(auth);
       const data = (await ref.get()).data();
-      return { enabled: !!(config.enabled && config.priceId && config.returnUrl),
+      return { enabled: !!(config.enabled && (config.priceId || Object.keys(plans).length) && config.returnUrl),
+        plan: data?.plan || null, seats: data?.seats || null,
         hasSubscription: !!data?.customerId && !!data?.subscriptionId && !['canceled', 'incomplete_expired'].includes(data?.subscriptionStatus) };
     },
 
-    async checkout(auth) {
+    async checkout(auth, input) {
       enabled();
       const { id, ref } = await owner(auth);
+      const plan = input?.plan || null;
+      if (plan && !plans[plan]) throw new HttpsError('invalid-argument', 'Unknown plan.');
       const release = await lock(ref);
       try {
         let data = (await ref.get()).data() || {};
@@ -100,13 +139,16 @@ export function createBillingService({ db, stripe, config, now = Date.now }) {
         if (data.attempt && now() - data.attempt.createdAt > 23 * 3600000) {
           throw new HttpsError('failed-precondition', 'Checkout requires operator reconciliation.');
         }
-        const attempt = data.attempt || { id: randomUUID(), createdAt: now(), priceId: config.priceId, returnUrl: safeReturnUrl(config.returnUrl) };
+        const attempt = data.attempt || {
+          id: randomUUID(), createdAt: now(), plan, priceId: await priceFor(plan),
+          quantity: plan === 'company' ? await seatsFor(id) : 1, returnUrl: safeReturnUrl(config.returnUrl),
+        };
         await ref.set({ attempt, checkoutId: null }, { merge: true });
         const session = await stripe.checkout.sessions.create({
           mode: 'subscription', customer: data.customerId,
-          line_items: [{ price: attempt.priceId, quantity: 1 }], payment_method_types: ['card'],
-          client_reference_id: id, metadata: { companyId: id },
-          subscription_data: { metadata: { companyId: id } },
+          line_items: [{ price: attempt.priceId, quantity: attempt.quantity || 1 }], payment_method_types: ['card'],
+          client_reference_id: id, metadata: { companyId: id, plan: attempt.plan || '' },
+          subscription_data: { metadata: { companyId: id, plan: attempt.plan || '' } },
           success_url: attempt.returnUrl, cancel_url: attempt.returnUrl,
         }, { idempotencyKey: `checkout-${attempt.id}` });
         await ref.set({ checkoutId: session.id, attempt: null }, { merge: true });
@@ -122,8 +164,34 @@ export function createBillingService({ db, stripe, config, now = Date.now }) {
       return { url: (await stripe.billingPortal.sessions.create({ customer, return_url: safeReturnUrl(config.returnUrl) })).url };
     },
 
+    // Company plan: set the subscription quantity to the number of active drivers (min 3).
+    // Called after a driver is approved / removed, and before each renewal (invoice.upcoming).
+    async syncSeats(auth) {
+      enabled();
+      const { id } = await owner(auth);
+      return this.syncSeatsFor(id);
+    },
+
+    async syncSeatsFor(companyId) {
+      const ref = db.doc(`billingCustomers/${companyId}`);
+      const data = (await ref.get()).data() || {};
+      if (!data.subscriptionId) return { seats: null };
+      const sub = await stripe.subscriptions.retrieve(data.subscriptionId);
+      const item = sub?.items?.data?.[0];
+      if (!item || planOf(sub) !== 'company' || ['canceled', 'incomplete_expired'].includes(sub.status)) return { seats: null };
+      const seats = await seatsFor(companyId);
+      if (item.quantity !== seats) {
+        await stripe.subscriptionItems.update(item.id, { quantity: seats, proration_behavior: 'create_prorations' },
+          { idempotencyKey: `seats-${companyId}-${item.id}-${seats}-${Math.floor(now() / 60000)}` });
+      }
+      await db.doc(`companies/${companyId}`).set({ seats }, { merge: true });
+      await ref.set({ seats }, { merge: true });
+      return { seats };
+    },
+
     async event(event) {
-      const supported = ['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'];
+      const supported = ['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted',
+        'invoice.paid', 'invoice.payment_failed', 'invoice.upcoming'];
       if (!supported.includes(event.type)) return;
       const customerId = typeof event.data.object.customer === 'string' ? event.data.object.customer : event.data.object.customer?.id;
       if (!customerId) return;
@@ -139,12 +207,26 @@ export function createBillingService({ db, stripe, config, now = Date.now }) {
         const current = (await subscriptions(customerId)).filter(s => s.metadata?.companyId === ref.id);
         const active = current.find(s => s.status === 'active');
         const sub = active || current.find(s => !['canceled', 'incomplete_expired'].includes(s.status)) || current[0];
+        // Failed payment: 7 days of grace, then new work cannot be started (current work can be finished).
+        const stored = (await ref.get()).data() || {};
+        let plan = subscriptionPlan(sub);
+        let pastDueSince = null;
+        if (sub?.status === 'past_due') {
+          pastDueSince = stored.pastDueSinceMillis || now();
+          if (now() - pastDueSince < GRACE_MS) plan = 'paid';
+        }
         const batch = db.batch();
-        batch.set(db.doc(`companies/${ref.id}`), { plan: subscriptionPlan(sub), billingUpdatedAtMillis: now() }, { merge: true });
-        batch.set(ref, { subscriptionId: sub?.id || null, subscriptionStatus: sub?.status || 'none' }, { merge: true });
+        batch.set(db.doc(`companies/${ref.id}`), {
+          plan, billingUpdatedAtMillis: now(), billingPlan: planOf(sub),
+          seats: sub?.items?.data?.[0]?.quantity ?? null, graceUntilMillis: pastDueSince ? pastDueSince + GRACE_MS : null,
+        }, { merge: true });
+        batch.set(ref, { subscriptionId: sub?.id || null, subscriptionStatus: sub?.status || 'none', pastDueSinceMillis: pastDueSince, plan: planOf(sub) }, { merge: true });
         batch.set(receipt, { companyId: ref.id, processedAtMillis: now() });
         await batch.commit();
       } finally { await release(); }
+      if (event.type === 'invoice.upcoming') {
+        try { await this.syncSeatsFor(ref.id); } catch (e) { console.error('Seat sync failed', { companyId: ref.id }); }
+      }
     },
   };
 }

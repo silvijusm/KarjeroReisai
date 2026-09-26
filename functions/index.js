@@ -3,7 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString, defineBoolean } from 'firebase-functions/params';
 import Stripe from 'stripe';
-import { createBillingService } from './billing.js';
+import { createBillingService, PLANS } from './billing.js';
 
 initializeApp();
 const stripeKey = defineSecret('STRIPE_SECRET_KEY');
@@ -15,11 +15,11 @@ const options = { region: 'europe-west1', maxInstances: 3, timeoutSeconds: 60, s
 
 function service() {
   return createBillingService({ db: getFirestore(), stripe: new Stripe(stripeKey.value(), { maxNetworkRetries: 2 }),
-    config: { enabled: enabled.value(), priceId: price.value(), returnUrl: returnUrl.value() } });
+    config: { enabled: enabled.value(), priceId: price.value(), plans: PLANS, returnUrl: returnUrl.value() } });
 }
 function callable(method) {
   return onCall(options, async request => {
-    try { return await service()[method](request.auth); }
+    try { return await service()[method](request.auth, request.data); }
     catch (error) {
       if (error instanceof HttpsError) throw error;
       // Never return SDK exceptions, raw request bodies, keys or billing URLs.
@@ -31,6 +31,7 @@ function callable(method) {
 export const billingStatus = callable('status');
 export const createCheckout = callable('checkout');
 export const createBillingPortal = callable('portal');
+export const syncSeats = callable('syncSeats');
 export const stripeWebhook = onRequest({ ...options, secrets: [stripeKey, webhookKey] }, async (req, res) => {
   if (req.method !== 'POST') { res.status(405).send('Method not allowed'); return; }
   const stripe = new Stripe(stripeKey.value());

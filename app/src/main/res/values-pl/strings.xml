@@ -221,4 +221,12 @@
     <string name="check_more_loads">⚠ Więcej załadunków niż kursów</string>
     <string name="check_more_trips">⚠ Więcej kursów niż załadunków</string>
     <string name="loads_vs_trips">Załadowano %1$d · Kursy %2$d</string>
+    <string name="bplan_monthly">Miesięczna – 5 €/mies.</string>
+    <string name="bplan_yearly">Roczna – 55 €/rok</string>
+    <string name="bplan_company">Firmy – 3 €/kierowcę/mies. (od 3)</string>
+    <string name="bplan_contractor_small">Wykonawca: do 10 aut – 49 €/mies.</string>
+    <string name="bplan_contractor_medium">Wykonawca: do 30 aut – 99 €/mies.</string>
+    <string name="bplan_contractor_large">Wykonawca: bez limitu – 199 €/mies.</string>
+    <string name="seats_billed">Opłacani kierowcy: %1$d</string>
+    <string name="payment_failed_grace">Płatność nieudana. Zaktualizuj kartę do %1$s.</string>
 </resources>

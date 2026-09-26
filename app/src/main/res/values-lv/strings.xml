@@ -221,4 +221,12 @@
     <string name="check_more_loads">⚠ Iekraušanu vairāk nekā reisu</string>
     <string name="check_more_trips">⚠ Reisu vairāk nekā iekraušanu</string>
     <string name="loads_vs_trips">Iekrauts %1$d · Reisi %2$d</string>
+    <string name="bplan_monthly">Mēneša – 5 €/mēn.</string>
+    <string name="bplan_yearly">Gada – 55 €/gadā</string>
+    <string name="bplan_company">Uzņēmumiem – 3 €/vadītājam/mēn. (no 3)</string>
+    <string name="bplan_contractor_small">Būvuzņēmējs: līdz 10 aut. – 49 €/mēn.</string>
+    <string name="bplan_contractor_medium">Būvuzņēmējs: līdz 30 aut. – 99 €/mēn.</string>
+    <string name="bplan_contractor_large">Būvuzņēmējs: neierobežoti – 199 €/mēn.</string>
+    <string name="seats_billed">Apmaksāti vadītāji: %1$d</string>
+    <string name="payment_failed_grace">Maksājums neizdevās. Atjauniniet karti līdz %1$s.</string>
 </resources>

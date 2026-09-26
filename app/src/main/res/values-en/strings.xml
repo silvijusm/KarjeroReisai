@@ -221,4 +221,12 @@
     <string name="check_more_loads">⚠ More loads than trips</string>
     <string name="check_more_trips">⚠ More trips than loads</string>
     <string name="loads_vs_trips">Loaded %1$d · Trips %2$d</string>
+    <string name="bplan_monthly">Monthly – €5/month</string>
+    <string name="bplan_yearly">Yearly – €55/year</string>
+    <string name="bplan_company">Company – €3/driver/month (min. 3)</string>
+    <string name="bplan_contractor_small">Contractor: up to 10 trucks – €49/month</string>
+    <string name="bplan_contractor_medium">Contractor: up to 30 trucks – €99/month</string>
+    <string name="bplan_contractor_large">Contractor: unlimited – €199/month</string>
+    <string name="seats_billed">Drivers billed: %1$d</string>
+    <string name="payment_failed_grace">Payment failed. Update your card by %1$s or new work cannot be started.</string>
 </resources>

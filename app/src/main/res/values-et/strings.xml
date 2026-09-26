@@ -221,4 +221,12 @@
     <string name="check_more_loads">⚠ Laadimisi rohkem kui reise</string>
     <string name="check_more_trips">⚠ Reise rohkem kui laadimisi</string>
     <string name="loads_vs_trips">Laaditud %1$d · Reisid %2$d</string>
+    <string name="bplan_monthly">Kuu – 5 €/kuu</string>
+    <string name="bplan_yearly">Aasta – 55 €/aasta</string>
+    <string name="bplan_company">Ettevõttele – 3 €/juht/kuu (alates 3)</string>
+    <string name="bplan_contractor_small">Töövõtja: kuni 10 autot – 49 €/kuu</string>
+    <string name="bplan_contractor_medium">Töövõtja: kuni 30 autot – 99 €/kuu</string>
+    <string name="bplan_contractor_large">Töövõtja: piiramatult – 199 €/kuu</string>
+    <string name="seats_billed">Arveldatud juhte: %1$d</string>
+    <string name="payment_failed_grace">Makse ebaõnnestus. Uuendage kaarti enne %1$s.</string>
 </resources>
