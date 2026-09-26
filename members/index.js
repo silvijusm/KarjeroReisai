@@ -24,3 +24,7 @@ export const approveMember = callable('approveMember');
 export const rejectMember = callable('rejectMember');
 export const removeMember = callable('removeMember');
 export const setMemberRole = callable('setMemberRole');
+export const objectJoinCode = callable('objectJoinCode');
+export const joinObject = callable('joinObject');
+export const approveCarrier = callable('approveCarrier');
+export const removeCarrier = callable('removeCarrier');

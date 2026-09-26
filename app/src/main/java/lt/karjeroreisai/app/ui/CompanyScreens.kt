@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
+import kotlinx.coroutines.launch
 import lt.karjeroreisai.app.R
 
 data class CompanyMember(
@@ -282,9 +283,17 @@ fun TeamScreen(auth: AuthUiState, members: List<CompanyMember>, onBack: () -> Un
                     Text(member.name, fontWeight = FontWeight.Bold)
                     Text("${member.email} · ${stringResource(roleLabel(member.role))}", style = MaterialTheme.typography.bodySmall)
                     if (isAdmin && member.uid != auth.uid) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val next = if (member.role == "dispatcher") "driver" else "dispatcher"
-                        OutlinedButton(onClick = { call("setMemberRole", mapOf("uid" to member.uid, "role" to next)) }, enabled = !busy) {
-                            Text(stringResource(if (next == "dispatcher") R.string.make_dispatcher else R.string.make_driver))
+                        var roleMenu by remember { mutableStateOf(false) }
+                        Column {
+                            OutlinedButton(onClick = { roleMenu = true }, enabled = !busy) { Text(stringResource(R.string.change_role)) }
+                            DropdownMenu(expanded = roleMenu, onDismissRequest = { roleMenu = false }) {
+                                listOf("driver", "dispatcher", "loader").filter { it != member.role }.forEach { r ->
+                                    DropdownMenuItem(text = { Text(stringResource(roleLabel(r))) }, onClick = {
+                                        roleMenu = false
+                                        call("setMemberRole", mapOf("uid" to member.uid, "role" to r))
+                                    })
+                                }
+                            }
                         }
                         TextButton(onClick = { confirmRemove = member }, enabled = !busy) { Text(stringResource(R.string.remove)) }
                     }
@@ -347,6 +356,18 @@ fun VehiclesScreen(auth: AuthUiState, vehicles: List<CompanyVehicle>, onBack: ()
         } else {
             Text(stringResource(R.string.manager_only_view))
         }
+        if (isAdmin && vehicles.any { it.active }) {
+            val context = LocalContext.current
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+            OutlinedButton(onClick = {
+                val id = auth.companyId ?: return@OutlinedButton
+                scope.launch {
+                    val file = createQrStickers(context, id, auth.companyName, vehicles.filter { it.active }.map { it.plate })
+                    shareFile(context, file, "application/pdf")
+                }
+            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.qr_stickers)) }
+            Text(stringResource(R.string.qr_stickers_hint), style = MaterialTheme.typography.bodySmall)
+        }
         HorizontalDivider()
         if (vehicles.isEmpty()) Text(stringResource(R.string.no_vehicles))
         vehicles.forEach { vehicle ->
@@ -401,6 +422,7 @@ fun roleLabel(role: String?): Int = when (role) {
     "company_admin" -> R.string.role_company
     "dispatcher" -> R.string.role_dispatcher
     "driver" -> R.string.role_driver
+    "loader" -> R.string.role_loader
     else -> R.string.role_unknown
 }
 

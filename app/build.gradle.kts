@@ -13,8 +13,8 @@ android {
         applicationId = "lt.karjeroreisai.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.9.0"
+        versionCode = 13
+        versionName = "1.0.0"
     }
 
     buildFeatures {
@@ -64,4 +64,6 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-functions")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    // QR codes: vehicle stickers and scanning at the quarry.
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 }

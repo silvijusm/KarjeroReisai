@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "loads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "carrierId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "plate",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "loadedAtMillis",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "loads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "carrierId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "loadedAtMillis",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
