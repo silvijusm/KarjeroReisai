@@ -42,8 +42,17 @@ jobs:
           printf '%s' "$KEY" > "$KEYFILE"
           chmod 600 "$KEYFILE"
           export GOOGLE_APPLICATION_CREDENTIALS="$KEYFILE"
-          npm run deploy:members -- --non-interactive --force
+          set +e
+          npm run deploy:members -- --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          code=${PIPESTATUS[0]}
           rm -f "$KEYFILE"
+          if [ "$code" != "0" ]; then
+            # Show the end of the log as annotations (readable without opening raw logs).
+            # One annotation (GitHub keeps max 10 per step); newlines encoded as %0A.
+            msg=$(grep -v '^\s*$' "$RUNNER_TEMP/deploy.log" | tail -n 40 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Deploy failed::$msg"
+            exit "$code"
+          fi
       - name: Remove key file
         if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"
