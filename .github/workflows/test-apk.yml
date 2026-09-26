@@ -1,7 +1,7 @@
 name: Publish test APK
 
 # Builds the debug APK and publishes it at a permanent link:
-# https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk
+# https://karjieroreisai.web.app/apk (Firebase Hosting) and the GitHub release "testas".
 on:
   workflow_dispatch:
   push:
@@ -9,6 +9,8 @@ on:
     paths:
       - "app/**"
       - "scripts/make-signing-key.py"
+      - "site/**"
+      - "scripts/deploy-firebase.sh"
       - ".github/workflows/test-apk.yml"
 
 permissions:
@@ -68,3 +70,18 @@ jobs:
           else
             gh release create testas KarjeroReisai-testas.apk --prerelease --title "Testinė versija $VERSION" --notes "$NOTES" --target "$GITHUB_SHA" --repo "$REPO"
           fi
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Publish to karjieroreisai.web.app/apk (works with a private repository)
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          KEYFILE="$RUNNER_TEMP/sa.json"
+          printf '%s' "$KEY" > "$KEYFILE"; chmod 600 "$KEYFILE"
+          export GOOGLE_APPLICATION_CREDENTIALS="$KEYFILE"
+          APK_FILE="$PWD/KarjeroReisai-testas.apk" HOSTING_ONLY=1 bash scripts/deploy-firebase.sh
+          rm -f "$KEYFILE"

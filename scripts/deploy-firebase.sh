@@ -18,6 +18,23 @@ CONFIG=$(jq -c '.result.sdkConfig // empty' "${RUNNER_TEMP:-/tmp}/sdk.json")
 echo "export const firebaseConfig = $CONFIG;" > web/config.js
 echo "Web config written for app $APP_ID"
 
+# Public website (site/) and the Android app are served from Firebase Hosting too, so they stay
+# available when the GitHub repository is private: karjieroreisai.web.app/site/…, /apk, /pagalba.
+rm -rf web/site && cp -r site web/site
+if [ -n "${APK_FILE:-}" ] && [ -f "$APK_FILE" ]; then
+  cp "$APK_FILE" web/KarjeroReisai.apk
+elif [ -n "${GH_TOKEN:-}" ] && gh release download testas --repo "${GITHUB_REPOSITORY:-silvijusm/KarjeroReisai}" \
+    -p KarjeroReisai-testas.apk -O web/KarjeroReisai.apk --clobber; then
+  echo "APK taken from the 'testas' release"
+else
+  echo "::warning title=APK::No APK found – karjieroreisai.web.app/apk will not work until the next app build."
+fi
+
+if [ "${HOSTING_ONLY:-}" = "1" ]; then
+  $FB deploy --force --only hosting
+  exit 0
+fi
+
 npm ci --prefix members --no-audit --no-fund
 TARGETS="firestore:rules,firestore:indexes,functions:members,hosting"
 

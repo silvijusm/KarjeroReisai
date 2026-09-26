@@ -13,8 +13,8 @@ android {
         applicationId = "lt.karjeroreisai.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "1.4.0"
+        versionCode = 23
+        versionName = "1.4.1"
     }
 
     // CI builds the test APK with a stable key (scripts/make-signing-key.py), so updates install over

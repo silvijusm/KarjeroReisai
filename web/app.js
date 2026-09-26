@@ -11,7 +11,7 @@ import { t, lang, setLang, LANGS } from './i18n.js';
 import { pageObjects } from './objects.js';
 import { invoiceList } from './invoices.js';
 import { fillRoads } from './roadfill.js';
-const HELP_URL = 'https://silvijusm.github.io/KarjeroReisai/site/pagalba.html';
+const HELP_URL = '/pagalba';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -506,6 +506,6 @@ async function pageCompany(main) {
     isOwner ? profileCard(c) : null,
     isOwner ? retentionCard(c) : null,
     h('div', { class: 'card' }, h('h2', {}, t('mobileApp')), h('p', {}, t('mobileHint')),
-      h('a', { href: 'https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk' }, t('downloadApk'))));
+      h('a', { href: '/apk' }, t('downloadApk'))));
   if (isAdmin()) invoiceList({ h, t, db, state, lang }).then(card => page.append(card));
 }

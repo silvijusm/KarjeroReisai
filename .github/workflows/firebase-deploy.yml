@@ -38,6 +38,7 @@ jobs:
         env:
           KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           KEYFILE="$RUNNER_TEMP/sa.json"
           printf '%s' "$KEY" > "$KEYFILE"
