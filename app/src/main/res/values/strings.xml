@@ -153,4 +153,15 @@
     <string name="vehicle_active">Naudojamas</string>
     <string name="choose_vehicle">Pasirinkti automobilį</string>
     <string name="vehicle_value">Automobilis: %1$s</string>
+    <string name="dispatch_map">Žemėlapis – visi automobiliai</string>
+    <string name="state_moving">Važiuoja</string>
+    <string name="state_stopped">Stovi</string>
+    <string name="state_inactive">Neaktyvus</string>
+    <string name="state_offline">Baigė darbą</string>
+    <string name="trip_number">Reisas %1$d</string>
+    <string name="close">Uždaryti</string>
+    <string name="today_summary">Šiandien: %1$d reisai, %2$s t, %3$s km</string>
+    <string name="no_live_vehicles">Kol kas niekas nedirba. Automobiliai atsiras, kai vairuotojai pradės darbą.</string>
+    <string name="trips_short">%1$d reis.</string>
+    <string name="minutes_ago">prieš %1$d min.</string>
 </resources>

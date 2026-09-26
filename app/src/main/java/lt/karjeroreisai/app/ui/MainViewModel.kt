@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import lt.karjeroreisai.app.cloud.CloudSync
 import lt.karjeroreisai.app.data.AppDatabase
 import lt.karjeroreisai.app.data.BillingMode
 import lt.karjeroreisai.app.data.GpsPoint
@@ -102,7 +103,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _dashboard.value = _dashboard.value.copy(busy = true)
             val id = withContext(Dispatchers.IO) {
+                val cloud = CloudSync.config(getApplication())
                 db.startSession(
+                    cloudId = if (cloud != null) java.util.UUID.randomUUID().toString() else null,
+                    companyId = cloud?.companyId,
+                    driverUid = cloud?.uid,
                     loadingPlace = loading,
                     unloadingPlace = unloading,
                     truck = truck,
@@ -112,7 +117,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     zoneRadiusM = zoneRadiusM,
                     billingMode = billingMode,
                     rate = rate
-                )
+                ).also { newId -> runCatching { CloudSync.syncSession(getApplication(), db, newId) } }
             }
             refresh()
             onStarted(id)
@@ -139,7 +144,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     distanceKm = distance,
                     durationMs = now - start,
                     preventDuplicateWithinMs = 60_000L
-                )
+                ).also { if (it > 0L) runCatching { CloudSync.syncSession(getApplication(), db, session.id) } }
             }
 
             _dashboard.value = _dashboard.value.copy(
@@ -193,6 +198,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     .putLong(LocationTrackingService.tripStartKey(session.id), 0L)
                     .apply()
 
+                if (inserted > 0L) runCatching { CloudSync.syncSession(getApplication(), db, session.id) }
                 if (inserted > 0L)
                     AppLanguage.wrap(getApplication()).getString(R.string.zone_added)
                 else
@@ -207,7 +213,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun undoLastTrip() {
         val session = _dashboard.value.session ?: return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { db.undoLastTrip(session.id) }
+            withContext(Dispatchers.IO) {
+                db.undoLastTrip(session.id)
+                runCatching { CloudSync.syncSession(getApplication(), db, session.id) }
+            }
             _dashboard.value = _dashboard.value.copy(statusMessage = AppLanguage.wrap(getApplication()).getString(R.string.trip_undone))
             refresh()
         }
@@ -216,7 +225,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun endSession(onEnded: (Long) -> Unit) {
         val session = _dashboard.value.session ?: return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { db.endSession(session.id) }
+            withContext(Dispatchers.IO) {
+                db.endSession(session.id)
+                runCatching {
+                    CloudSync.syncSession(getApplication(), db, session.id)
+                    CloudSync.markOffline(getApplication())
+                }
+            }
             _lastEndedId.value = session.id
             _dashboard.value = DashboardState(now = System.currentTimeMillis())
             loadHistory()

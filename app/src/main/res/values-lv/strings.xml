@@ -153,4 +153,15 @@
     <string name="vehicle_active">Lietošanā</string>
     <string name="choose_vehicle">Izvēlēties automašīnu</string>
     <string name="vehicle_value">Automašīna: %1$s</string>
+    <string name="dispatch_map">Karte – visas automašīnas</string>
+    <string name="state_moving">Brauc</string>
+    <string name="state_stopped">Stāv</string>
+    <string name="state_inactive">Nav signāla</string>
+    <string name="state_offline">Beidza darbu</string>
+    <string name="trip_number">Reiss %1$d</string>
+    <string name="close">Aizvērt</string>
+    <string name="today_summary">Šodien: %1$d reisi, %2$s t, %3$s km</string>
+    <string name="no_live_vehicles">Pagaidām neviens nestrādā. Automašīnas parādīsies, kad vadītāji sāks darbu.</string>
+    <string name="trips_short">%1$d reisi</string>
+    <string name="minutes_ago">pirms %1$d min</string>
 </resources>

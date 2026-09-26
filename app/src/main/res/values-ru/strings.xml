@@ -153,4 +153,15 @@
     <string name="vehicle_active">Используется</string>
     <string name="choose_vehicle">Выбрать автомобиль</string>
     <string name="vehicle_value">Автомобиль: %1$s</string>
+    <string name="dispatch_map">Карта – все автомобили</string>
+    <string name="state_moving">Едет</string>
+    <string name="state_stopped">Стоит</string>
+    <string name="state_inactive">Нет сигнала</string>
+    <string name="state_offline">Закончил работу</string>
+    <string name="trip_number">Рейс %1$d</string>
+    <string name="close">Закрыть</string>
+    <string name="today_summary">Сегодня: %1$d рейсов, %2$s т, %3$s км</string>
+    <string name="no_live_vehicles">Пока никто не работает. Автомобили появятся, когда водители начнут работу.</string>
+    <string name="trips_short">%1$d рейс.</string>
+    <string name="minutes_ago">%1$d мин назад</string>
 </resources>

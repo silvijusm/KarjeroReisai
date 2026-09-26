@@ -71,7 +71,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class Screen { HOME, HISTORY, MAP, SUMMARY, TEAM, VEHICLES }
+private enum class Screen { HOME, HISTORY, MAP, SUMMARY, TEAM, VEHICLES, DISPATCH }
 
 @Composable
 fun KarjeroReisaiApp(
@@ -121,6 +121,17 @@ fun KarjeroReisaiApp(
         authState.role == "super_admin" ||
             ((authState.role == "company_admin" || activeMember) &&
                 (companyPlan == "paid" || (companyPlan == "trial" && trialEndsAtMillis > nowMillis)))
+
+    // Cloud sync is allowed for the company owner and for approved drivers / dispatchers.
+    val cloudEnabled = authState.signedIn && !authState.companyId.isNullOrBlank() &&
+        (authState.role == "company_admin" || authState.role == "super_admin" || activeMember)
+    LaunchedEffect(authState.uid, authState.companyId, cloudEnabled, authState.name) {
+        lt.karjeroreisai.app.cloud.CloudSync.configure(
+            context, authState.companyId, authState.uid,
+            authState.name.ifBlank { authState.email }, cloudEnabled
+        )
+    }
+    val liveVehicles = rememberLiveVehicles(authState.companyId, authState.signedIn && authState.isManager)
 
     // Company data for managers (members) and for everyone in the company (vehicles).
     val members = rememberMembers(authState.companyId, authState.signedIn && authState.isManager)
@@ -231,6 +242,7 @@ fun KarjeroReisaiApp(
                                 isManager = authState.isManager,
                                 pendingCount = members.count { it.status == "pending" },
                                 onTeam = { screen = Screen.TEAM },
+                                onDispatch = { screen = Screen.DISPATCH },
                                 onVehicles = { screen = Screen.VEHICLES },
                                 canStartWork = canStartWork,
                                 entitlementLoading = entitlementLoading,
@@ -286,6 +298,8 @@ fun KarjeroReisaiApp(
                             )
                         }
 
+                        Screen.DISPATCH -> DispatchScreen(authState, liveVehicles, onBack = { screen = Screen.HOME })
+
                         Screen.TEAM -> TeamScreen(authState, members, onBack = { screen = Screen.HOME })
 
                         Screen.VEHICLES -> VehiclesScreen(authState, vehicles, onBack = { screen = Screen.HOME })
@@ -332,6 +346,7 @@ private fun StartScreen(
     isManager: Boolean,
     pendingCount: Int,
     onTeam: () -> Unit,
+    onDispatch: () -> Unit,
     onVehicles: () -> Unit,
     canStartWork: Boolean,
     entitlementLoading: Boolean,
@@ -362,6 +377,11 @@ private fun StartScreen(
         item { Text(stringResource(R.string.signed_in, accountLabel)) }
         companyLine?.let { line -> item { Text(line, fontWeight = FontWeight.Bold) } }
         if (isManager) {
+            item {
+                Button(onClick = onDispatch, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.dispatch_map))
+                }
+            }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onTeam, modifier = Modifier.weight(1f)) {

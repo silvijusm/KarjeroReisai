@@ -47,6 +47,32 @@ service cloud.firestore {
       return isCompanyAdmin(companyId)
         || (isActiveMember(companyId) && member(companyId).data.role == 'dispatcher');
     }
+    // Owner or approved member may record work for the company.
+    function canWork(companyId) {
+      return isCompanyOwner(companyId) || isActiveMember(companyId);
+    }
+    function validSession(data) {
+      return data.keys().hasOnly(['driverUid', 'driverName', 'plate', 'trailer', 'loadingPlace', 'unloadingPlace',
+          'date', 'startedAtMillis', 'endedAtMillis', 'tripsCount', 'tonnes', 'km', 'trips', 'updatedAtMillis',
+          'vehicleId', 'objectId', 'contractorId'])
+        && data.driverUid == request.auth.uid
+        && data.startedAtMillis is int
+        && (!('trips' in data) || (data.trips is list && data.trips.size() <= 300))
+        && (!('plate' in data) || (data.plate is string && data.plate.size() <= 40));
+    }
+    function validRoute(data) {
+      return data.keys().hasOnly(['driverUid', 'lat', 'lng', 't', 'firstMillis'])
+        && data.driverUid == request.auth.uid
+        && data.lat is list && data.lat.size() <= 500
+        && data.lng is list && data.lng.size() == data.lat.size()
+        && data.t is list && data.t.size() == data.lat.size();
+    }
+    function validLive(data) {
+      return data.keys().hasOnly(['lat', 'lng', 'speedKmh', 'heading', 'accuracyM', 'updatedAtMillis', 'sessionId',
+          'plate', 'driverName', 'state', 'tripsCount', 'tonnes', 'startedAtMillis', 'objectId'])
+        && data.keys().hasAll(['state', 'updatedAtMillis'])
+        && data.state in ['moving', 'stopped', 'loading', 'unloading', 'offline'];
+    }
     function validVehicle(data) {
       return data.keys().hasAll(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
@@ -112,6 +138,25 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
       allow update: if isCompanyAdmin(companyId) && validVehicle(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.updatedAt == request.time;
+    }
+    // Work sessions: a driver writes only their own; managers read all of the company.
+    // Removed drivers can no longer write, but their past sessions stay for reports.
+    match /companies/{companyId}/sessions/{sessionId} {
+      allow read: if signedIn() && (resource.data.driverUid == request.auth.uid || isManager(companyId));
+      allow create: if canWork(companyId) && validSession(request.resource.data);
+      allow update: if canWork(companyId) && validSession(request.resource.data)
+        && resource.data.driverUid == request.auth.uid;
+      match /route/{chunkId} {
+        allow read: if signedIn() && (resource.data.driverUid == request.auth.uid || isManager(companyId));
+        allow create: if canWork(companyId) && validRoute(request.resource.data);
+        allow update: if canWork(companyId) && validRoute(request.resource.data)
+          && resource.data.driverUid == request.auth.uid;
+      }
+    }
+    // One live position document per driver, overwritten (cheap). Only managers see the map.
+    match /companies/{companyId}/liveLocations/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isManager(companyId));
+      allow create, update: if request.auth.uid == uid && canWork(companyId) && validLive(request.resource.data);
     }
     // companyCodes and rateLimits are server-only.
     // No client deletes; unmatched collections are denied by default.
