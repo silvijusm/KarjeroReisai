@@ -18,6 +18,19 @@
 
 ---
 
+## 0.1 Esama būklė (patikrinta 2026-09-25, `main` šaka)
+
+- **Reisai ir darbo sesijos saugomi TIK telefone** (Room, `app/.../data/AppDatabase.kt`). Į Firestore niekas nesiunčiama → viršininkas šiuo metu nieko negali matyti. **Pirmas būtinas darbas – debesų sinchronizacija** (sesijos, reisai, maršrutai) į `companies/{companyId}/...`, su veikimu be ryšio.
+- **Vairuotojo rolės nėra.** Registruojantis visada kuriama nauja įmonė ir `company_admin` (`AuthViewModel.kt`, `firestore.rules` → `users` create leidžia tik `company_admin`). Reikia pridėti `driver` / `dispatcher` ir prisijungimą prie esamos įmonės per Cloud Function (klientas pats negali priskirti sau įmonės).
+- `firestore.rules`: yra tik `users` ir `companies`. Viskas kita draudžiama – naujoms kolekcijoms reikės taisyklių + testų `tests/firestore.rules.test.mjs`.
+- `companies` laukai: `name, ownerUid, plan, trialEndsAtMillis, createdAt`; bandomasis laikotarpis taisyklėse **60 d.** (5 184 000 000 ms).
+- Mokėjimai (`functions/index.js`, `billing.js`): regionas `europe-west1`, vienas `STRIPE_PRICE_ID` parametras, `BILLING_ENABLED` numatyta `false`. Reikia palaikyti kelias kainas (lookup_key) ir įmonės `quantity`.
+- Firebase projektas: `karjieroreisai` (žr. `docs/OWNER-SETUP.md`). `firebase.json` neturi `hosting` – web dispečeriui pridėti.
+- ~~Šakniniame kataloge keisti failai~~ – 2026-09-26 patikrinta: jų nebėra, nieko daryti nereikia.
+- `index.html` šaknyje = viešoji svetainė (GitHub Pages iš `main`/root). Aplanke `site/` yra `privacy.html`, `terms.html`, `delete-account.html` – svetainėje turi būti nuorodos į juos.
+
+---
+
 ## 1. Tikslas
 
 Įmonė (nuo 3 iki neriboto skaičiaus automobilių, realiai 5–40+) naudoja KarjeroReisai:
@@ -217,3 +230,184 @@ Po kiekvieno etapo savininkui – trumpa santrauka lietuviškai: kas padaryta, k
 - Firebase projekte įjungti **Blaze** planą (Cloud Functions reikalauja; mažam naudojimui kaina ~0–kelių eurų).
 - Stripe: aktyvuoti live paskyrą (įmonės duomenys, banko sąskaita, tapatybė), kai testai sėkmingi.
 - Peržiūrėti privatumo / darbuotojų informavimo tekstus su teisininku.
+
+---
+
+# II DALIS – Rangovai, objektai, krovėjai ir elektroninis važtaraštis
+
+> Savininko idėja (jis pats dirba vežėju karjeruose). Dabar karjere ekskavatorininkas ant popieriaus rašo, ką pakrovė, o vairuotojas ryte gauna popierinį **krovinio važtaraštį**, vakare jį užpildo ranka ir atiduoda. Tikslas – visa tai padaryti programėlėje, kad niekas nepildytų ranka ir visi matytų tuos pačius skaičius.
+
+## 13. Paskyrų tipai (papildo 2 skyrių)
+
+| Tipas | Kas | Moka |
+|---|---|---|
+| Asmeninis vairuotojas | Vienas vairuotojas | 5 €/mėn. arba 55 €/metus |
+| Vežėjo įmonė | Savi automobiliai ir vairuotojai (I dalis) | 3 €/vairuotojui/mėn., min. 3 (savininkas patvirtino 2026-09-26) |
+| **Rangovas** | Įmonė, vykdanti objektą (kelias, statybvietė) ir samdanti vežėjus vežti žvyrą, smėlį, skaldą | Siūloma ~20–30 €/objektui/mėn. (**kainą patvirtina savininkas**) |
+| **Krovėjas (ekskavatorininkas)** | Karjere kraunantis darbuotojas, priskirtas rangovui arba karjerui | Nemokamai |
+| Objekto priėmėjas | Rangovo darbuotojas objekte, priimantis krovinį | Nemokamai (rangovo narys) |
+
+Vienas žmogus / įmonė gali turėti kelias roles (pvz. vežėjas, kuris dirba keliems rangovams).
+
+## 14. Objektas
+
+`contractors/{contractorId}/objects/{objectId}`:
+- pavadinimas, **objekto kodas** (pvz. `P-256` – rangovo vidinis kodas, rodomas važtaraštyje), prisijungimo kodas vežėjams (pvz. `OB-7315`), būsena (aktyvus / baigtas);
+- **siuntėjas** ir **gavėjas** (įmonės pavadinimas, adresas, įmonės kodas, PVM kodas) – užpildoma vieną kartą;
+- **karjeras(-ai)** ir **iškrovimo vieta(-os)** – taškai + zonos (poligonai) žemėlapyje;
+- medžiagos: pavadinimas + **piltinis tankis t/m³** (pvz. smėlis 1,6), kad būtų galima perskaičiuoti tonas ↔ kubus;
+- atstumas karjeras–objektas (km, apskaičiuojamas iš maršruto arba įvedamas);
+- prijungti vežėjai ir jų automobiliai.
+
+**Vežėjo prijungimas:** rangovas duoda prisijungimo kodą → vežėjo įmonė jį įveda ir pažymi automobilius → rangovas patvirtina. Ta pati logika kaip 4 skyriuje.
+
+**Privatumas (privaloma):** rangovas mato vežėjo automobilio vietą ir duomenis **tik tada, kai tas automobilis dirba jo objekte** (aktyvi sesija, priskirta šiam objektui). Kitų vežėjo darbų – nemato. Tikrinama Firestore taisyklėse.
+
+## 15. Pakrovimo registravimas karjere (vietoj popieriaus)
+
+1. Programėlė kiekvienam automobiliui sugeneruoja **QR kodą** (PDF lipdukas spausdinimui: QR + valst. Nr.). Vairuotojas jį užsiklijuoja ant priekinio stiklo.
+2. Krovėjas telefonu **nuskenuoja QR** (arba pasirenka iš sąrašo automobilių, kurie pagal GPS yra karjero zonoje) → pasirenka medžiagą → įveda kiekį (**tonos** arba **m³** arba **kaušai**; perskaičiuojama pagal tankį) → „Pakrauta“. Tikslas: ≤ 5 s vienam reisui, dideli mygtukai, veikia su pirštinėmis.
+3. Vairuotojui ateina pranešimas „Pakrauta: 26 t smėlio, 08:42“ → jis patvirtina (arba pažymi neatitikimą su komentaru).
+4. Įvažiavus į objekto zoną GPS pats užfiksuoja **iškrovimą** (+ galimybė vairuotojui / priėmėjui patvirtinti rankiniu būdu).
+5. Jei karjere yra **svarstyklės** – galima įvesti tikslų svorį ir nufotografuoti svėrimo lapelį (nuotrauka prisegama prie reiso).
+6. **Be ryšio** – viskas kaupiama telefone ir sinchronizuojama atsiradus ryšiui; laikas imamas iš įvykio momento, ne sinchronizavimo.
+
+## 16. Elektroninis krovinio važtaraštis
+
+Pagal realų popierinį važtaraštį, kurį naudoja rangovas (pavyzdys: „Krovinio važtaraštis Nr. 0164549“). Programėlė jį **užpildo automatiškai**; žmogus tik patvirtina.
+
+| Popieriaus laukas | Iš kur imama automatiškai |
+|---|---|
+| Važtaraščio Nr. | Rangovo numeracija (serija + eilės Nr.) arba įvedamas popierinio blanko Nr., kol rangovas pereina prie elektroninio |
+| Siuntėjas / Gavėjas (pavadinimas, adresas, įmonės kodas, PVM kodas) | Objekto nustatymai |
+| Data | Darbo sesijos data |
+| Maršrutas (iš – į) | Objekto karjeras → iškrovimo vieta |
+| Medžiaga, lyg. svoris (piltinis tankis) t/m³ | Objekto medžiaga |
+| Įmonė vežėja + adresas | Vežėjo įmonės profilis |
+| Pervežimus vykdo įmonė | Subrangovas vežėjas, jei vežėjas samdo kitą įmonę (neprivalomas laukas) |
+| Mašinos markė, Valst. Nr., Transp. priem. keliamoji galia | Automobilio profilis (5 skyrius – papildyti laukais `make`, `payloadT`) |
+| Atsakingo už pakrovimą asmens pavardė, parašas | Krovėjo paskyra + elektroninis patvirtinimas |
+| Pirmo reiso pakrovimo pradžia / Paskutinio reiso pakrovimo pabaiga | Pirmo ir paskutinio pakrovimo įrašo laikas |
+| Kraunama vienam reisui (t) / (m³) | Pakrovimo įrašai (jei skiriasi – rodyti kiekvieną reisą lentelėje) |
+| Krovinį pervežimui priėmiau (pavardė, parašas) | Vairuotojo paskyra + patvirtinimas |
+| Atvykimas į darbo vietą / Darbo pertrauka / Išvykimas iš darbo vietos | GPS: įvažiavimas / išvažiavimas iš objekto ar karjero zonos; pertrauka – stovėjimas > X min (nustatoma) arba vairuotojo pažymėta |
+| Atstumas | Objekto atstumas arba GPS išmatuotas vieno reiso atstumas |
+| Viso reisų / Viso tonų / Viso kubų | Susumuojama automatiškai |
+| Objekto kodas | Objekto kodas (pvz. `P-256`) |
+| Priėmusio asmens pareigos, pavardė, parašas | Objekto priėmėjo paskyra + patvirtinimas |
+| ☐ „Jei atstumas didesnis negu 15 km, naudojamas tik vienam reisui“ | Taisyklė: jei atstumas > 15 km – **kiekvienam reisui atskiras važtaraštis**; kitaip – vienas važtaraštis dienai su visais reisais |
+
+**Parašai:** patvirtinimas programėlėje (prisijungęs asmuo + laikas + telefono vieta), pasirinktinai – ranka pasirašyti ekrane pirštu. Kiekvienas patvirtinimas įrašomas ir nebekeičiamas (keitimai – tik nauja versija su istorija).
+
+**PDF:** važtaraštis generuojamas PDF formatu, **išdėstymu kuo panašesnis į popierinį**, kad buhalterija ir rangovas jį atpažintų. Siunčiamas el. paštu rangovui ir vežėjui, prieinamas abiems skydeliuose.
+
+**Svarbu savininkui:** ar elektroninis važtaraštis gali visiškai pakeisti popierinį, turi sutikti rangovas (jo buhalterija), o buhalterijos / VMI reikalavimus verta pasitikslinti su buhalteriu. Pradžioje programėlė gali veikti **šalia popieriaus** (įvedamas popierinio blanko Nr., PDF – kaip priedas), vėliau – vietoj jo.
+
+## 17. Ataskaitos rangovui ir vežėjui
+
+- Rangovui: pagal objektą, laikotarpį, vežėją, automobilį, medžiagą – reisai, tonos, kubai, važtaraščių sąrašas; eksportas PDF / Excel **atsiskaitymui su vežėjais**.
+- Vežėjui: tie patys skaičiai jo pusėje – **sąskaitai rangovui išrašyti**. Abi pusės mato identiškus duomenis → nebelieka ginčų.
+- Krovėjui: kiek pakrovė per dieną (pagal automobilį / medžiagą).
+
+## 19. Rangovo nustatomi kilometrai ir tonos (SVARBU – turi pirmenybę prieš 15–16 skyrius)
+
+Savininko reikalavimas: **atsiskaitymo kilometrus ir tonas nustato pats rangovas**, nes vežėjams mokama pagal sutartus dydžius, ne pagal GPS ar spėjimą.
+
+**Kilometrai**
+- Objekte rangovas įveda **sutartą atstumą** (pvz. 7 km) kiekvienam maršrutui karjeras → iškrovimo vieta. Jei karjerų ar iškrovimo vietų keli – atstumas kiekvienai porai atskirai.
+- Važtaraštyje, ataskaitose ir atsiskaitymuose naudojamas **tik rangovo nustatytas atstumas**.
+- GPS išmatuotas atstumas saugomas tik kaip informacija; jei jis nuo sutarto skiriasi daugiau nei nustatytą % (numatyta 20 %) – rangovui rodomas įspėjimas (ženkliukas prie reiso), bet skaičiai **nekeičiami automatiškai**.
+
+**Tonos**
+- Rangovas nustato **tonas vienam reisui**:
+  - numatytąsias objektui / medžiagai (pvz. smėlis – 26 t), ir
+  - galimybę nustatyti **kitaip konkrečiam automobiliui** (pvz. mažesnė mašina – 20 t).
+- Tada krovėjui kiekio įvesti **nereikia**: nuskenuoja QR → „Pakrauta“ → įrašoma rangovo nustatyta tonų reikšmė. (Krovėjui palikti galimybę pažymėti „nepilnas“ / „kitas kiekis“ su komentaru, jei rangovas tai leidžia nustatymuose.)
+- Kubai skaičiuojami iš tonų pagal rangovo nustatytą piltinį tankį.
+- Jei yra svarstyklės – rangovas nustatymuose pasirenka, kas galioja: **nustatytos tonos** ar **svėrimo rezultatas**.
+
+**Pakeitimai**
+- Rangovas (ir tik jis / jo dispečeris) gali pakeisti km ar tonas **atgaline data** konkrečiam reisui ar laikotarpiui (pvz. pasikeitė maršrutas). Kiekvienas pakeitimas saugomas istorijoje: kas, kada, sena ir nauja reikšmė, priežastis.
+- Pakeitimai po važtaraščio patvirtinimo kuria **naują važtaraščio versiją**; vežėjas gauna pranešimą ir mato, kas pakeista.
+- Vežėjas ir vairuotojas **negali** keisti rangovo nustatytų km ir tonų – tik pažymėti nesutikimą su komentaru.
+
+**Priėmimo kriterijai**
+- [ ] Rangovas nustato 7 km ir 26 t → visi dienos reisai važtaraštyje ir ataskaitoje turi 7 km ir 26 t, net jei GPS rodo kitaip.
+- [ ] Automobiliui nustatyta 20 t → to automobilio reisai skaičiuojami po 20 t.
+- [ ] Krovėjas užregistruoja pakrovimą vienu mygtuko paspaudimu (be kiekio įvedimo).
+- [ ] Vežėjas negali pakeisti km / tonų (taisyklių testas); rangovo pakeitimas matosi istorijoje.
+
+## 18. Etapai (tęsinys po I dalies 8 etapo)
+
+9. Rangovo paskyra, objektai, vežėjų prijungimas prie objekto, **rangovo nustatomi km ir tonos (19 sk.)** + privatumo taisyklės ir testai.
+10. Karjero / objekto zonos, QR lipdukai, krovėjo ekranas, pakrovimo patvirtinimas, darbas be ryšio.
+11. Elektroninis važtaraštis + PDF pagal popierinio išdėstymą + 15 km taisyklė.
+12. Rangovo ir vežėjo ataskaitos, Stripe kaina rangovui (po savininko patvirtinimo).
+
+**Priėmimo kriterijai:**
+- [ ] Krovėjas nuskenuoja QR ir užregistruoja pakrovimą ≤ 5 s; veikia be ryšio.
+- [ ] Rangovas nemato vežėjo automobilio, kai tas dirba kitur (taisyklių testas).
+- [ ] Dienos pabaigoje važtaraštis užpildytas automatiškai; trūksta tik patvirtinimų.
+- [ ] Atstumas > 15 km → kiekvienam reisui atskiras važtaraštis.
+- [ ] PDF važtaraštis atitinka popierinio laukus ir išdėstymą.
+- [ ] Rangovo ir vežėjo ataskaitų sumos sutampa.
+
+---
+
+# III DALIS – Papildomos funkcijos (savininkas patvirtino: visos)
+
+> Diegti po I ir II dalių. Prioritetas nurodytas skliaustuose: **(A)** – pirmiausia, **(B)** – vėliau, **(C)** – kai liks laiko.
+
+## 20. Darbo ir poilsio režimas (A)
+
+- **Vairuotojo laikmatis**: vairavimas / kitas darbas / pertrauka / poilsis. Vairavimas nustatomas automatiškai pagal GPS greitį (> 5 km/h ilgiau nei 1 min), kita – vairuotojas perjungia vienu mygtuku.
+- Skaičiuojama pagal ES reglamentą (EB) Nr. 561/2006 (parametrus laikyti konfigūracijoje, ne kode):
+  - po 4,5 val. vairavimo – 45 min pertrauka (galima 15 + 30 min);
+  - per dieną iki 9 val. vairavimo (du kartus per savaitę – iki 10 val.);
+  - per savaitę iki 56 val., per dvi savaites iki 90 val.;
+  - kasdienis poilsis – 11 val. (sutrumpintas 9 val. – iki 3 kartų tarp savaitinių poilsių).
+- Įspėjimai vairuotojui: prieš 30 min ir prieš 10 min iki privalomos pertraukos / dienos limito (garsas + pranešimas, dideli skaitmenys ekrane).
+- **Atskiras ekranas viršininkui / dispečeriui / rangovui** (atskira teisė, pvz. `can_view_driving_times`): kuriems vairuotojams artėja pertrauka ar limitas; savaitės / dviejų savaičių suvestinė.
+- Funkcija yra **tik pagalbinė** – teisiškai pagrindinis yra tachografas. Savininko sprendimas: **pagrindiniame ekrane jokio papildomo įspėjamojo užrašo nerodyti**. Vienas sakinys („Pagalbinė informacija, teisiškai galioja tachografo duomenys“) – tik naudojimo sąlygose (`site/terms.html`) ir pagalbos / „Apie“ skiltyje.
+- (B) Tachografo `.ddd` failų įkėlimas ir palyginimas (vėlesnis etapas; naudoti patikrintą atvirą biblioteką, jei tokia yra).
+
+## 21. Vežėjams
+
+1. **Sąskaita faktūra vienu mygtuku (A).** Iš pasirinkto laikotarpio patvirtintų važtaraščių sukuriama PVM sąskaita faktūra rangovui: pardavėjo ir pirkėjo rekvizitai (iš profilių), eilutės pagal objektą / medžiagą, kiekis (reisai / t / t·km), įkainis, PVM 21 %, suma. Serija ir numeracija – vežėjo nustatymuose. PDF + el. paštas. Pastaba: suderinti su buhalteriu; ateityje – eksportas buhalterinei programai / VMI i.SAF formatu.
+2. **Įkainiai (A).** Kiekvienam objektui / rangovui: €/reisui, €/tonai arba €/t·km (km – rangovo nustatyti, 19 sk.). Rodoma: uždirbta per dieną / mėnesį / objektą. Įkainius gali nustatyti rangovas (sutarties kaina), vežėjas mato ir patvirtina.
+3. **Kuras ir išlaidos (B).** Čekio nuotrauka + suma + litrai + automobilis; kitos išlaidos (remontas, padangos). Pelnas pagal objektą = pajamos – išlaidos. Vid. sąnaudos l/100 km pagal automobilį.
+4. **Priminimai apie dokumentus ir techniką (A).** Automobiliui: techninė apžiūra, draudimas, tachografo kalibravimas, padangų / tepalų keitimas pagal km. Vairuotojui: vairuotojo pažymėjimas, kodas 95, tachografo kortelė, medicininė pažyma. Priminimai prieš 30 / 7 / 1 d. vairuotojui ir viršininkui; dokumento nuotrauka prisegama.
+
+## 22. Rangovams
+
+1. **Objekto eiga (A).** Planas (pvz. 5 000 t smėlio) → atvežta / liko / % / prognozė, kada baigsis (pagal pastarųjų dienų tempą). Pagal medžiagą.
+2. **Atsiskaitymas su vežėjais (A).** Mėnesio suvestinė kiekvienam vežėjui su sumomis pagal įkainius; turi sutapti su vežėjo sąskaita (21.1). Neatitikimai paryškinami.
+3. **„Reikia mašinų“ (B).** Rangovas skelbia užsakymą: data, laikas, karjeras → objektas, medžiaga, reikalingas mašinų skaičius, įkainis. Prijungti vežėjai gauna pranešimą ir atsako „Siunčiu N mašinų“. Rangovas mato, kiek patvirtinta. (Ateityje – galimybė skelbti ir neprijungtiems vežėjams – ryšys su savininko krovinių biržos projektu.)
+4. **Iškrovimo nuotrauka (B).** Vairuotojas / priėmėjas nufotografuoja iškrovimą; nuotrauka prisegama prie reiso ir važtaraščio. Nuotraukos suspaudžiamos (≤ 300 KB), saugomos Firebase Storage, trinamos pagal `dataRetentionDays`.
+
+## 23. Vairuotojams
+
+1. **Kiek uždirbau šiandien (A).** Jei vairuotojui mokama pagal reisus / tonas – viršininkas nustato vairuotojo įkainį; vairuotojas mato savo dienos / mėnesio uždarbį (kitų – nemato).
+2. **Eilė karjere (B).** Kiek automobilių dabar yra karjero zonoje ir laukia pakrovimo (pagal GPS ir dar neužregistruotus pakrovimus), apytikslis laukimo laikas.
+3. **Navigacija (C).** Mygtukas „Vesti į karjerą / objektą“ – atidaro Google Maps / Waze su rangovo pažymėtu įvažiavimo tašku (sunkvežimių maršrutams nekurti savo navigacijos).
+4. **Gedimo pranešimas (B).** Nuotrauka + trumpas aprašas + automobilis → pranešimas viršininkui; būsena: naujas / tvarkoma / sutvarkyta.
+
+## 24. Ekskavatorininkui
+
+- **Atvažiuojančių mašinų sąrašas (B):** automobiliai, važiuojantys į jo karjerą (pagal GPS kryptį ir aktyvų objektą), su apytiksliu atvykimo laiku; kitas eilėje – viršuje.
+
+## 25. Etapai (tęsinys)
+
+13. Darbo ir poilsio režimas + dispečerio ekranas (20 sk.).
+14. Įkainiai, uždarbis, sąskaita faktūra, atsiskaitymas su vežėjais (21.1–21.2, 22.2, 23.1).
+15. Priminimai apie dokumentus ir techniką (21.4).
+16. Objekto eiga (22.1).
+17. (B) Kuras ir išlaidos, „Reikia mašinų“, iškrovimo nuotraukos, eilė karjere, gedimų pranešimai, atvažiuojančių mašinų sąrašas.
+18. (C) Navigacija, tachografo `.ddd` įkėlimas.
+
+**Priėmimo kriterijai (pagrindiniai):**
+- [ ] Po 4 val. vairavimo vairuotojas gauna įspėjimą; po 4,5 val. – aiškus „Privaloma pertrauka“.
+- [ ] Viršininkas mato, kuriems vairuotojams per 1 val. baigsis leistinas vairavimas.
+- [ ] Iš mėnesio važtaraščių sukuriama teisinga PVM sąskaita (sumos sutampa su rangovo suvestine).
+- [ ] Priminimas apie techninę apžiūrą ateina prieš 30 d. vairuotojui ir viršininkui.
+- [ ] Objekto eiga rodo teisingą atvežtų tonų sumą ir % nuo plano.
