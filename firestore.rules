@@ -22,6 +22,38 @@ service cloud.firestore {
         && data.email == request.auth.token.email
         && data.companyId is string && data.companyId.size() > 0;
     }
+    function member(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid));
+    }
+    // Owner = the company_admin who registered the company (no members record needed).
+    function isCompanyOwner(companyId) {
+      return signedIn() && currentUser().data.companyId == companyId
+        && currentUser().data.role in ['company_admin', 'super_admin']
+        && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerUid == request.auth.uid;
+    }
+    // Approved member whose server-written profile still points to this company.
+    function isActiveMember(companyId) {
+      return signedIn() && currentUser().data.companyId == companyId
+        && exists(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid))
+        && member(companyId).data.status == 'active'
+        && member(companyId).data.role == currentUser().data.role;
+    }
+    function isCompanyAdmin(companyId) {
+      return isSuperAdmin() || isCompanyOwner(companyId)
+        || (isActiveMember(companyId) && member(companyId).data.role == 'company_admin');
+    }
+    // Admins and dispatchers: see all drivers, vehicles and (later) the live map.
+    function isManager(companyId) {
+      return isCompanyAdmin(companyId)
+        || (isActiveMember(companyId) && member(companyId).data.role == 'dispatcher');
+    }
+    function validVehicle(data) {
+      return data.keys().hasAll(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
+        && data.plateNumber is string && data.plateNumber.size() > 0 && data.plateNumber.size() <= 20
+        && data.name is string && data.name.size() <= 100
+        && data.active is bool;
+    }
     function validCompany(data) {
       return data.keys().hasAll(['name', 'ownerUid', 'plan', 'trialEndsAtMillis', 'createdAt'])
         && data.keys().hasOnly(['name', 'ownerUid', 'plan', 'trialEndsAtMillis', 'createdAt'])
@@ -54,10 +86,12 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'company_admin';
       // Do not trust legacy profiles that may already contain a forged companyId.
+      // Active members (drivers, dispatchers) may read name, plan and trial end.
       allow read: if signedIn() && (isSuperAdmin()
         || (resource.data.ownerUid == request.auth.uid
           && currentUser().data.companyId == companyId
-          && currentUser().data.role == 'company_admin'));
+          && currentUser().data.role == 'company_admin')
+        || isActiveMember(companyId));
       // Billing, trial end and ownership changes require the trusted Admin SDK.
       allow update: if signedIn()
         && (isSuperAdmin() || (resource.data.ownerUid == request.auth.uid
@@ -66,6 +100,20 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
         && validName(request.resource.data.name);
     }
+    // Membership records are written only by Cloud Functions (joinCompany, approveMember ...).
+    // A user may read their own record (to see "pending"); managers read the whole list.
+    match /companies/{companyId}/members/{memberUid} {
+      allow read: if signedIn() && (request.auth.uid == memberUid || isManager(companyId));
+    }
+    // Vehicles: every active member can read (to pick one), only admins edit. No deletes – set active=false.
+    match /companies/{companyId}/vehicles/{vehicleId} {
+      allow read: if isManager(companyId) || isActiveMember(companyId);
+      allow create: if isCompanyAdmin(companyId) && validVehicle(request.resource.data)
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+      allow update: if isCompanyAdmin(companyId) && validVehicle(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.updatedAt == request.time;
+    }
+    // companyCodes and rateLimits are server-only.
     // No client deletes; unmatched collections are denied by default.
   }
 }

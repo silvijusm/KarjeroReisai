@@ -49,11 +49,8 @@ fun SettingsScreen(auth: AuthUiState, working: Boolean, onBack: () -> Unit, onLo
             Text(stringResource(R.string.account), style = MaterialTheme.typography.titleMedium)
             if (auth.signedIn) {
                 Text(auth.email)
-                Text(stringResource(when (auth.role) {
-                    "super_admin" -> R.string.role_owner
-                    "company_admin" -> R.string.role_company
-                    else -> R.string.role_unknown
-                }))
+                Text(stringResource(roleLabel(auth.role)))
+                if (auth.isMember && auth.companyName.isNotBlank()) Text(auth.companyName)
                 if (auth.role == "super_admin") {
                     Button(onClick = { adminOpen = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.admin)) }
                 } else if (auth.role == "company_admin") {

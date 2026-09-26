@@ -71,7 +71,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class Screen { HOME, HISTORY, MAP, SUMMARY }
+private enum class Screen { HOME, HISTORY, MAP, SUMMARY, TEAM, VEHICLES }
 
 @Composable
 fun KarjeroReisaiApp(
@@ -91,8 +91,9 @@ fun KarjeroReisaiApp(
     var trialEndsAtMillis by remember(authState.uid, authState.companyId) { mutableLongStateOf(0L) }
     var entitlementLoading by remember(authState.uid, authState.companyId) { mutableStateOf(false) }
 
-    DisposableEffect(authState.signedIn, authState.role, authState.companyId) {
-        if (authState.signedIn && authState.role == "company_admin" && !authState.companyId.isNullOrBlank()) {
+    val activeMember = authState.isMember && authState.memberStatus == "active"
+    DisposableEffect(authState.signedIn, authState.role, authState.companyId, activeMember) {
+        if (authState.signedIn && (authState.role == "company_admin" || activeMember) && !authState.companyId.isNullOrBlank()) {
             entitlementLoading = true
             val registration = FirebaseFirestore.getInstance()
                 .collection("companies")
@@ -118,8 +119,15 @@ fun KarjeroReisaiApp(
 
     val canStartWork =
         authState.role == "super_admin" ||
-            (authState.role == "company_admin" &&
+            ((authState.role == "company_admin" || activeMember) &&
                 (companyPlan == "paid" || (companyPlan == "trial" && trialEndsAtMillis > nowMillis)))
+
+    // Company data for managers (members) and for everyone in the company (vehicles).
+    val members = rememberMembers(authState.companyId, authState.signedIn && authState.isManager)
+    val vehicles = rememberVehicles(
+        authState.companyId,
+        authState.signedIn && (authState.isCompanyAdmin || activeMember)
+    )
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -175,8 +183,31 @@ fun KarjeroReisaiApp(
                         state = authState,
                         onSignIn = authViewModel::signIn,
                         onRegister = authViewModel::registerCompanyAdmin,
+                        onRegisterDriver = authViewModel::registerDriver,
                         onResetPassword = authViewModel::resetPassword,
                         onClearError = authViewModel::clearError
+                    )
+                }
+
+                authState.needsCompany -> {
+                    JoinCompanyScreen(
+                        state = authState,
+                        onJoin = authViewModel::joinCompany,
+                        onSignOut = authViewModel::signOut
+                    )
+                }
+
+                authState.isMember && authState.memberStatus == null -> {
+                    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.Center) {
+                        Text(stringResource(R.string.connecting))
+                    }
+                }
+
+                authState.isMember && authState.memberStatus == "pending" -> {
+                    PendingApprovalScreen(
+                        state = authState,
+                        onCancel = authViewModel::cancelJoinRequest,
+                        onSignOut = authViewModel::signOut
                     )
                 }
 
@@ -195,6 +226,12 @@ fun KarjeroReisaiApp(
                         Screen.HOME -> if (dashboard.session == null) {
                             StartScreen(
                                 accountLabel = authState.email,
+                                companyLine = if (authState.isMember) "${authState.companyName} · ${stringResource(roleLabel(authState.role))}" else null,
+                                vehicles = vehicles,
+                                isManager = authState.isManager,
+                                pendingCount = members.count { it.status == "pending" },
+                                onTeam = { screen = Screen.TEAM },
+                                onVehicles = { screen = Screen.VEHICLES },
                                 canStartWork = canStartWork,
                                 entitlementLoading = entitlementLoading,
                                 onSubscription = { settingsOpen = true },
@@ -249,6 +286,10 @@ fun KarjeroReisaiApp(
                             )
                         }
 
+                        Screen.TEAM -> TeamScreen(authState, members, onBack = { screen = Screen.HOME })
+
+                        Screen.VEHICLES -> VehiclesScreen(authState, vehicles, onBack = { screen = Screen.HOME })
+
                         Screen.HISTORY -> HistoryScreen(
                             sessions = history,
                             onBack = { screen = Screen.HOME },
@@ -286,6 +327,12 @@ fun KarjeroReisaiApp(
 @Composable
 private fun StartScreen(
     accountLabel: String,
+    companyLine: String?,
+    vehicles: List<CompanyVehicle>,
+    isManager: Boolean,
+    pendingCount: Int,
+    onTeam: () -> Unit,
+    onVehicles: () -> Unit,
     canStartWork: Boolean,
     entitlementLoading: Boolean,
     onSubscription: () -> Unit,
@@ -295,7 +342,10 @@ private fun StartScreen(
 ) {
     var loading by rememberSaveable { mutableStateOf("") }
     var unloading by rememberSaveable { mutableStateOf("") }
-    var truck by rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("company_prefs", Context.MODE_PRIVATE) }
+    // The last chosen company vehicle is remembered for the next work day.
+    var truck by rememberSaveable { mutableStateOf(prefs.getString("last_vehicle_plate", "").orEmpty()) }
     var trailer by rememberSaveable { mutableStateOf("") }
     var weightText by rememberSaveable { mutableStateOf("27") }
     var radiusText by rememberSaveable { mutableStateOf("150") }
@@ -310,6 +360,17 @@ private fun StartScreen(
     ) {
         item { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
         item { Text(stringResource(R.string.signed_in, accountLabel)) }
+        companyLine?.let { line -> item { Text(line, fontWeight = FontWeight.Bold) } }
+        if (isManager) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onTeam, modifier = Modifier.weight(1f)) {
+                        Text(if (pendingCount > 0) stringResource(R.string.team_pending, pendingCount) else stringResource(R.string.team))
+                    }
+                    OutlinedButton(onClick = onVehicles, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.vehicles)) }
+                }
+            }
+        }
         item {
             TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.sign_out))
@@ -317,6 +378,14 @@ private fun StartScreen(
         }
         item { OutlinedTextField(loading, { loading = it }, label = { Text(stringResource(R.string.loading_place)) }, modifier = Modifier.fillMaxWidth()) }
         item { OutlinedTextField(unloading, { unloading = it }, label = { Text(stringResource(R.string.unloading_place)) }, modifier = Modifier.fillMaxWidth()) }
+        if (vehicles.any { it.active }) {
+            item {
+                VehiclePicker(vehicles, truck) { plate ->
+                    truck = plate
+                    prefs.edit().putString("last_vehicle_plate", plate).apply()
+                }
+            }
+        }
         item { OutlinedTextField(truck, { truck = it }, label = { Text(stringResource(R.string.truck)) }, modifier = Modifier.fillMaxWidth()) }
         item { OutlinedTextField(trailer, { trailer = it }, label = { Text(stringResource(R.string.trailer)) }, modifier = Modifier.fillMaxWidth()) }
         item {
