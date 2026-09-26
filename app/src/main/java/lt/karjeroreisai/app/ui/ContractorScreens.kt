@@ -526,8 +526,8 @@ fun LoaderScreen(auth: AuthUiState, onSettings: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.loader_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            TextButton(onClick = onSettings) { Text(stringResource(R.string.settings)) }
+            Text(stringResource(R.string.loader_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = onSettings) { Text(stringResource(R.string.settings), maxLines = 1, softWrap = false) }
         }
         if (objects.isEmpty()) { Text(stringResource(R.string.loader_no_objects)); return@Column }
         if (objects.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
