@@ -12,6 +12,24 @@ service cloud.firestore {
     function validName(value) {
       return value is string && value.size() > 0 && value.size() <= 200;
     }
+    function isCompanyOwner(companyId) {
+      return signedIn()
+        && currentUser().data.role == 'company_admin'
+        && currentUser().data.companyId == companyId
+        && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerUid == request.auth.uid;
+    }
+    function isActiveMember(companyId) {
+      let member = get(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid));
+      return signedIn()
+        && currentUser().data.companyId == companyId
+        && currentUser().data.role in ['driver', 'dispatcher']
+        && member.data.status == 'active'
+        && member.data.role == currentUser().data.role;
+    }
+    function canReadTeam(companyId) {
+      return signedIn() && (isSuperAdmin() || isCompanyOwner(companyId)
+        || (isActiveMember(companyId) && currentUser().data.role == 'dispatcher'));
+    }
     function validProfile(data) {
       return data.keys().hasAll(['email', 'name', 'role', 'companyId', 'createdAt'])
         && data.keys().hasOnly(['email', 'name', 'role', 'companyId', 'createdAt'])
@@ -55,7 +73,8 @@ service cloud.firestore {
       allow read: if signedIn() && (isSuperAdmin()
         || (resource.data.ownerUid == request.auth.uid
           && currentUser().data.companyId == companyId
-          && currentUser().data.role == 'company_admin'));
+          && currentUser().data.role == 'company_admin')
+        || isActiveMember(companyId));
       // Billing, trial end and ownership changes require the trusted Admin SDK.
       allow update: if signedIn()
         && (isSuperAdmin() || (resource.data.ownerUid == request.auth.uid
@@ -63,7 +82,19 @@ service cloud.firestore {
           && currentUser().data.role == 'company_admin'))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
         && validName(request.resource.data.name);
+
+      match /members/{uid} {
+        // Pending/removed users may only read their own membership status.
+        allow read: if signedIn() && (request.auth.uid == uid || canReadTeam(companyId));
+        // Creation, approval, role changes and removal require Cloud Functions.
+      }
+      match /vehicles/{vehicleId} {
+        allow read: if signedIn() && (canReadTeam(companyId) || isActiveMember(companyId));
+        // Vehicles are managed by the owner through a validated callable.
+      }
     }
+    // companyCodes and companyJoinLimits are server-only. Session, trip and
+    // location access stays denied until the separately reviewed sync stage.
     // No client deletes; unmatched collections are denied by default.
   }
 }

@@ -1,7 +1,7 @@
 import { before, after, beforeEach, test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { collection, getDocs, query, orderBy, documentId, limit, doc, setDoc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, documentId, limit, doc, setDoc, getDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
 let env;
 before(async () => {
   if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('Use npm run test:rules (emulator only).');
@@ -123,5 +123,96 @@ test('billing customer mappings and webhook receipts remain server-only for all 
       await assertFails(getDoc(doc(db(uid), name, 'a')));
       await assertFails(setDoc(doc(db(uid), name, 'a'), { customerId: 'fake', processed: true }));
     }
+  }
+});
+
+async function seedMember(uid, { status = 'active', role = 'driver', companyId = 'a' } = {}) {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'users', uid), {
+      email: `${uid}@example.test`, name: uid, role,
+      companyId: status === 'active' ? companyId : '', membershipStatus: status,
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(ctx.firestore(), 'companies', companyId, 'members', uid), { role, status, displayName: uid });
+  });
+}
+async function seedVehicle() {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'companies', 'a', 'vehicles', 'ABC123'), { plateNumber: 'ABC123', active: true });
+  });
+}
+test('active driver can read company and vehicles, only own membership', async () => {
+  await register('alice', 'a'); await seedMember('driver'); await seedMember('second'); await seedVehicle();
+  await assertSucceeds(getDoc(doc(db('driver'), 'companies', 'a')));
+  await assertSucceeds(getDocs(collection(db('driver'), 'companies', 'a', 'vehicles')));
+  await assertSucceeds(getDoc(doc(db('driver'), 'companies', 'a', 'members', 'driver')));
+  await assertFails(getDoc(doc(db('driver'), 'companies', 'a', 'members', 'second')));
+  await assertFails(getDocs(collection(db('driver'), 'companies', 'a', 'members')));
+  await assertFails(getDoc(doc(db('driver'), 'users', 'second')));
+});
+test('dispatcher and owner can list the team but dispatcher cannot edit it or company billing', async () => {
+  await register('alice', 'a'); await seedMember('dispatch', { role: 'dispatcher' }); await seedMember('driver');
+  for (const uid of ['alice', 'dispatch']) {
+    await assertSucceeds(getDocs(collection(db(uid), 'companies', 'a', 'members')));
+    await assertFails(updateDoc(doc(db(uid), 'companies', 'a', 'members', 'driver'), { role: 'dispatcher' }));
+  }
+  await assertFails(updateDoc(doc(db('dispatch'), 'companies', 'a'), { name: 'Changed' }));
+  await assertFails(updateDoc(doc(db('dispatch'), 'companies', 'a'), { plan: 'paid' }));
+});
+test('pending and removed drivers see own status but cannot access company or vehicles', async () => {
+  await register('alice', 'a'); await seedVehicle();
+  for (const status of ['pending', 'removed', 'rejected', 'cancelled']) {
+    await seedMember('driver', { status });
+    await assertSucceeds(getDoc(doc(db('driver'), 'companies', 'a', 'members', 'driver')));
+    await assertFails(getDoc(doc(db('driver'), 'companies', 'a')));
+    await assertFails(getDoc(doc(db('driver'), 'companies', 'a', 'vehicles', 'ABC123')));
+  }
+});
+test('profile alone, mismatched roles and stale membership do not grant tenant access', async () => {
+  await register('alice', 'a'); await register('bob', 'b'); await seedVehicle();
+  await seedUser('forged', { role: 'driver', companyId: 'a' });
+  await assertFails(getDoc(doc(db('forged'), 'companies', 'a')));
+  await seedMember('driver');
+  await seedUser('driver', { role: 'dispatcher', companyId: 'a' });
+  await assertFails(getDocs(collection(db('driver'), 'companies', 'a', 'members')));
+  await seedUser('driver', { role: 'driver', companyId: 'b' });
+  await assertFails(getDoc(doc(db('driver'), 'companies', 'a', 'vehicles', 'ABC123')));
+});
+test('direct client driver registration, approval, removal, vehicle and code writes are denied', async () => {
+  await register('alice', 'a'); await seedMember('driver'); await seedVehicle();
+  await assertFails(setDoc(doc(db('new'), 'users', 'new'), { name: 'New', role: 'driver', companyId: 'a' }));
+  for (const uid of ['alice', 'driver']) {
+    await assertFails(setDoc(doc(db(uid), 'companies', 'a', 'members', 'new'), { role: 'driver', status: 'active' }));
+    await assertFails(updateDoc(doc(db(uid), 'companies', 'a', 'members', 'driver'), { status: 'removed' }));
+    await assertFails(deleteDoc(doc(db(uid), 'companies', 'a', 'members', 'driver')));
+    await assertFails(updateDoc(doc(db(uid), 'companies', 'a', 'vehicles', 'ABC123'), { active: false }));
+    await assertFails(updateDoc(doc(db(uid), 'companies', 'a'), { companyCode: 'KR-AAAAAAAA' }));
+  }
+  await assertFails(updateDoc(doc(db('driver'), 'users', 'driver'), { membershipStatus: 'active', companyId: 'b' }));
+  await assertSucceeds(updateDoc(doc(db('driver'), 'users', 'driver'), { name: 'New name' }));
+});
+test('codes and rate limits cannot be read or changed even by client super admin', async () => {
+  await register('alice', 'a'); await seedUser('support', { role: 'super_admin' });
+  for (const uid of ['alice', 'support']) {
+    for (const path of ['companyCodes/KR-AAAAAAAA', 'companyJoinLimits/alice']) {
+      await assertFails(getDoc(doc(db(uid), path)));
+      await assertFails(setDoc(doc(db(uid), path), { companyId: 'a', attempts: [] }));
+    }
+  }
+});
+test('cross-company and anonymous membership or vehicle access is denied', async () => {
+  await register('alice', 'a'); await register('bob', 'b'); await seedMember('driver'); await seedVehicle();
+  const anon = env.unauthenticatedContext().firestore();
+  for (const client of [anon, db('bob')]) {
+    await assertFails(getDoc(doc(client, 'companies', 'a', 'members', 'driver')));
+    await assertFails(getDocs(collection(client, 'companies', 'a', 'vehicles')));
+  }
+});
+test('sessions and live locations remain inaccessible until sync rules are implemented', async () => {
+  await register('alice', 'a'); await seedMember('driver');
+  for (const uid of ['alice', 'driver']) {
+    await assertFails(setDoc(doc(db(uid), 'companies', 'a', 'sessions', 's'), { driverUid: uid }));
+    await assertFails(getDocs(query(collection(db(uid), 'companies', 'a', 'sessions'), where('driverUid', '==', uid))));
+    await assertFails(setDoc(doc(db(uid), 'companies', 'a', 'liveLocations', uid), { lat: 55, lng: 24 }));
   }
 });

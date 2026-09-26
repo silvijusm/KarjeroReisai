@@ -4,6 +4,7 @@ import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString, defineBoolean } from 'firebase-functions/params';
 import Stripe from 'stripe';
 import { createBillingService } from './billing.js';
+import { createCompanyService } from './company.js';
 
 initializeApp();
 const stripeKey = defineSecret('STRIPE_SECRET_KEY');
@@ -31,6 +32,25 @@ function callable(method) {
 export const billingStatus = callable('status');
 export const createCheckout = callable('checkout');
 export const createBillingPortal = callable('portal');
+
+// Company operations do not bind Stripe secrets or call payment APIs.
+function companyCallable(method) {
+  return onCall({ region: 'europe-west1', maxInstances: 3, timeoutSeconds: 60 }, async request => {
+    try { return await createCompanyService({ db: getFirestore() })[method](request.auth, request.data ?? {}); }
+    catch (error) {
+      if (error instanceof HttpsError) throw error;
+      console.error('Company operation failed', { method });
+      throw new HttpsError('internal', 'Company management is temporarily unavailable.');
+    }
+  });
+}
+export const registerDriver = companyCallable('registerDriver');
+export const rotateCompanyCode = companyCallable('rotateCode');
+export const requestCompanyMembership = companyCallable('requestMembership');
+export const cancelCompanyRequest = companyCallable('cancelRequest');
+export const reviewCompanyMembership = companyCallable('reviewMembership');
+export const saveCompanyVehicle = companyCallable('saveVehicle');
+
 export const stripeWebhook = onRequest({ ...options, secrets: [stripeKey, webhookKey] }, async (req, res) => {
   if (req.method !== 'POST') { res.status(405).send('Method not allowed'); return; }
   const stripe = new Stripe(stripeKey.value());
