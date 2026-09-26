@@ -9,13 +9,12 @@ initializeApp();
 const stripeKey = defineSecret('STRIPE_SECRET_KEY');
 const webhookKey = defineSecret('STRIPE_WEBHOOK_SECRET');
 const enabled = defineBoolean('BILLING_ENABLED', { default: false });
-const price = defineString('STRIPE_PRICE_ID', { default: '' });
 const returnUrl = defineString('BILLING_RETURN_URL', { default: '' });
 const options = { region: 'europe-west1', maxInstances: 3, timeoutSeconds: 60, secrets: [stripeKey] };
 
 function service() {
   return createBillingService({ db: getFirestore(), stripe: new Stripe(stripeKey.value(), { maxNetworkRetries: 2 }),
-    config: { enabled: enabled.value(), priceId: price.value(), plans: PLANS, returnUrl: returnUrl.value() } });
+    config: { enabled: enabled.value(), plans: PLANS, returnUrl: returnUrl.value() } });
 }
 function callable(method) {
   return onCall(options, async request => {
