@@ -1,0 +1,54 @@
+name: Publish test APK
+
+# Builds the debug APK and publishes it at a permanent link:
+# https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-apk
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          gradle-version: "8.13"
+          cache-provider: basic
+      - name: Prepare Firebase client configuration
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: python3 scripts/prepare-firebase-config.py
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+      - name: Publish to release "testas"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          cp app/build/outputs/apk/debug/app-debug.apk KarjeroReisai-testas.apk
+          NOTES="Testinė versija $VERSION (debug). Atnaujinama automatiškai po kiekvieno programėlės pakeitimo. $(date -u +%Y-%m-%d)"
+          if gh release view testas --repo "$REPO" >/dev/null 2>&1; then
+            gh release upload testas KarjeroReisai-testas.apk --clobber --repo "$REPO"
+            gh release edit testas --title "Testinė versija $VERSION" --notes "$NOTES" --repo "$REPO"
+          else
+            gh release create testas KarjeroReisai-testas.apk --prerelease --title "Testinė versija $VERSION" --notes "$NOTES" --target "$GITHUB_SHA" --repo "$REPO"
+          fi
