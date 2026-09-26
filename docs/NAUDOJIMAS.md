@@ -2,7 +2,7 @@
 
 - **Programėlė (Android):** https://github.com/silvijusm/KarjeroReisai/releases/download/testas/KarjeroReisai-testas.apk
 - **Dispečerio centras (kompiuteris / naršyklė):** https://karjieroreisai.web.app
-- **Pagalba (išsami instrukcija):** https://silvijusm.github.io/KarjeroReisai/pagalba.html
+- **Pagalba (išsami instrukcija):** https://silvijusm.github.io/KarjeroReisai/site/pagalba.html
 
 ## Vežėjo įmonė (viršininkas)
 1. Užsiregistruokite programėlėje: **Registruotis → Įmonė**.

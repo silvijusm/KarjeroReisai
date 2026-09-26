@@ -11,7 +11,7 @@ import { t, lang, setLang, LANGS } from './i18n.js';
 import { pageObjects } from './objects.js';
 import { invoiceList } from './invoices.js';
 import { fillRoads } from './roadfill.js';
-const HELP_URL = 'https://silvijusm.github.io/KarjeroReisai/pagalba.html';
+const HELP_URL = 'https://silvijusm.github.io/KarjeroReisai/site/pagalba.html';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
