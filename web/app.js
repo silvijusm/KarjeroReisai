@@ -8,6 +8,7 @@ import { getFirestore, doc, getDoc, collection, onSnapshot, query, where, getDoc
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js';
 import { firebaseConfig } from './config.js';
 import { t, lang, setLang, LANGS } from './i18n.js';
+import { pageObjects } from './objects.js';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -105,7 +106,7 @@ function startListeners() {
 }
 
 // ---------- shell ----------
-const PAGES = [['map', 'navMap'], ['drivers', 'navDrivers'], ['vehicles', 'navVehicles'], ['history', 'navHistory'], ['reports', 'navReports'], ['company', 'navCompany']];
+const PAGES = [['map', 'navMap'], ['objects', 'navObjects'], ['drivers', 'navDrivers'], ['vehicles', 'navVehicles'], ['history', 'navHistory'], ['reports', 'navReports'], ['company', 'navCompany']];
 let navBadge;
 function renderNavBadge() {
   if (!navBadge) return;
@@ -129,7 +130,8 @@ function render() {
       h('button', { class: 'out', onclick: () => signOut(auth) }, t('signOut'))),
     main));
   renderNavBadge();
-  ({ map: pageMap, drivers: pageDrivers, vehicles: pageVehicles, history: pageHistory, reports: pageReports, company: pageCompany })[state.page](main);
+  const ctx = { h, t, db, call, state, fmt1, hhmm, ymd, dayStart, esc, lang, isAdmin };
+  ({ map: pageMap, objects: m => pageObjects(m, ctx), drivers: pageDrivers, vehicles: pageVehicles, history: pageHistory, reports: pageReports, company: pageCompany })[state.page](main);
 }
 
 // ---------- map ----------
@@ -287,6 +289,8 @@ function pageVehicles(main) {
         try { await batch.commit(); ta.value = ''; msg.textContent = ''; } catch (e) { console.error(e); msg.textContent = t('actionFailed'); }
       } }, t('add'))), msg));
   } else page.append(h('div', { class: 'card muted' }, t('viewOnly')));
+  if (isAdmin() && state.vehicles.some(v => v.active)) page.append(h('div', { class: 'card noprint' }, h('h2', {}, t('qrStickers')), h('p', { class: 'muted' }, t('qrStickersHint')),
+    h('button', { class: 'blue', onclick: printQr }, t('printQr'))));
   page.append(h('div', { class: 'card' }, h('h2', {}, t('navVehicles')), state.vehicles.length ? h('table', {},
     h('thead', {}, h('tr', {}, h('th', {}, t('plate')), h('th', {}, t('inUse')))),
     h('tbody', {}, state.vehicles.map(v => h('tr', {}, h('td', {}, h('b', {}, v.plateNumber), v.name ? ` – ${v.name}` : ''),
@@ -294,6 +298,22 @@ function pageVehicles(main) {
         try { await updateDoc(doc(db, 'companies', state.companyId, 'vehicles', v.id), { active: e.target.checked, updatedAt: serverTimestamp() }); }
         catch { msg.textContent = t('actionFailed'); }
       } })))))) : h('p', { class: 'muted' }, t('noVehicles'))));
+}
+
+// QR stickers (KR1|companyId|plate) – 6 per A4 page, for the windscreen.
+function printQr() {
+  const w = window.open('', '_blank');
+  if (!w) { alert(t('allowPopups')); return; }
+  const plates = state.vehicles.filter(v => v.active).map(v => v.plateNumber);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>QR</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+    <style>body{font-family:Arial,sans-serif;margin:0}.g{display:grid;grid-template-columns:1fr 1fr;gap:6mm;padding:10mm}
+    .s{border:1px dashed #999;height:85mm;display:flex;flex-direction:column;align-items:center;justify-content:center;page-break-inside:avoid}
+    .p{font-size:30px;font-weight:800;margin-top:8px}.c{font-size:11px;color:#444}</style></head><body><div class="g">
+    ${plates.map((p, i) => `<div class="s"><div id="q${i}"></div><div class="p">${esc(p)}</div><div class="c">${esc(state.company?.name || '')} · KarjeroReisai</div></div>`).join('')}
+    </div><script>const d=${JSON.stringify(plates.map(p => `KR1|${state.companyId}|${p}`))};
+    window.onload=()=>{d.forEach((x,i)=>new QRCode(document.getElementById('q'+i),{text:x,width:220,height:220,correctLevel:QRCode.CorrectLevel.M}));setTimeout(()=>print(),500)}<\/script></body></html>`);
+  w.document.close();
 }
 
 // ---------- history ----------
