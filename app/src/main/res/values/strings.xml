@@ -229,4 +229,19 @@
     <string name="bplan_contractor_large">Rangovas: neribotai – 199 €/mėn.</string>
     <string name="seats_billed">Apmokama vairuotojų: %1$d</string>
     <string name="payment_failed_grace">Mokėjimas nepavyko. Pakeiskite kortelę iki %1$s, kitaip naujų darbų pradėti nebus galima.</string>
+    <string name="privacy_title">Informacija apie jūsų duomenis</string>
+    <string name="privacy_intro">Prieš pradėdami dirbti įmonei „%1$s“, susipažinkite, kokie duomenys renkami.</string>
+    <string name="privacy_what">Kas renkama</string>
+    <string name="privacy_what_text">Buvimo vieta (GPS), greitis, maršrutas, reisai, pakrovimai, automobilio numeris, darbo pradžia ir pabaiga.</string>
+    <string name="privacy_when">Kada</string>
+    <string name="privacy_when_text">Tik kol vyksta darbas – nuo „Pradėti darbą“ iki „Baigti darbą“. Tuo metu telefone matysite nuolatinį pranešimą. Po darbo vieta nerenkama.</string>
+    <string name="privacy_who">Kas mato</string>
+    <string name="privacy_who_text">Įmonės „%1$s“ administratorius ir dispečeris. Jei dirbate rangovo objekte – rangovas mato jūsų automobilį tik tame objekte. Kiti vairuotojai jūsų duomenų nemato.</string>
+    <string name="privacy_how_long">Kiek laiko saugoma</string>
+    <string name="privacy_how_long_text">Tikslūs GPS taškai ištrinami automatiškai po %1$d d. Reisų suvestinės gali likti ataskaitoms ir atsiskaitymams.</string>
+    <string name="privacy_rights">Jūsų teisės</string>
+    <string name="privacy_rights_text">Nustatymuose „Mano duomenys“ galite atsisiųsti savo duomenis. Klausimais kreipkitės į savo įmonę arba info.karjeroreisai@gmail.com.</string>
+    <string name="privacy_accept">Susipažinau</string>
+    <string name="my_data">Mano duomenys – atsisiųsti (Excel)</string>
+    <string name="my_data_hint">Visos jūsų darbo sesijos ir reisai šioje įmonėje (CSV failas).</string>
 </resources>

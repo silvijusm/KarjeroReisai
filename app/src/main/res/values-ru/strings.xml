@@ -229,4 +229,19 @@
     <string name="bplan_contractor_large">Подрядчик: без ограничений – 199 €/мес.</string>
     <string name="seats_billed">Оплачивается водителей: %1$d</string>
     <string name="payment_failed_grace">Платёж не прошёл. Обновите карту до %1$s, иначе новую работу начать нельзя.</string>
+    <string name="privacy_title">Информация о ваших данных</string>
+    <string name="privacy_intro">Прежде чем начать работу в «%1$s», ознакомьтесь, какие данные собираются.</string>
+    <string name="privacy_what">Что собирается</string>
+    <string name="privacy_what_text">Местоположение (GPS), скорость, маршрут, рейсы, погрузки, номер машины, начало и конец работы.</string>
+    <string name="privacy_when">Когда</string>
+    <string name="privacy_when_text">Только во время работы – от «Начать работу» до «Закончить работу». В это время видно постоянное уведомление. После работы местоположение не собирается.</string>
+    <string name="privacy_who">Кто видит</string>
+    <string name="privacy_who_text">Администратор и диспетчер «%1$s». На объекте подрядчика подрядчик видит вашу машину только на этом объекте. Другие водители ваши данные не видят.</string>
+    <string name="privacy_how_long">Сколько хранится</string>
+    <string name="privacy_how_long_text">Точные GPS-точки удаляются автоматически через %1$d дн. Сводки рейсов могут остаться для отчётов и расчётов.</string>
+    <string name="privacy_rights">Ваши права</string>
+    <string name="privacy_rights_text">В настройках «Мои данные» можно скачать свои данные. Вопросы – вашей компании или info.karjeroreisai@gmail.com.</string>
+    <string name="privacy_accept">Ознакомлен(а)</string>
+    <string name="my_data">Мои данные – скачать (Excel)</string>
+    <string name="my_data_hint">Все ваши рабочие сессии и рейсы в этой компании (файл CSV).</string>
 </resources>

@@ -109,6 +109,18 @@ service cloud.firestore {
         && data.tonnes is number && data.tonnes > 0 && data.tonnes <= 100
         && data.loadedAtMillis is int;
     }
+    function validSettings(st) {
+      return st is map && st.keys().hasOnly(['dataRetentionDays'])
+        && (!('dataRetentionDays' in st) || (st.dataRetentionDays is int && st.dataRetentionDays >= 30 && st.dataRetentionDays <= 3650));
+    }
+    function validInvoice(data) {
+      return data.keys().hasAll(['number', 'dateStr', 'seller', 'buyer', 'lines', 'vatRate', 'net', 'vat', 'total', 'createdAtMillis', 'createdBy'])
+        && data.keys().hasOnly(['number', 'series', 'dateStr', 'dueStr', 'seller', 'buyer', 'lines', 'vatRate', 'net', 'vat', 'total',
+            'objectId', 'contractorId', 'objectName', 'periodFrom', 'periodTo', 'loadIds', 'note', 'createdAtMillis', 'createdBy'])
+        && data.number is string && data.number.size() > 0 && data.number.size() <= 40
+        && data.lines is list && data.lines.size() > 0 && data.lines.size() <= 100
+        && data.total is number && data.createdBy == request.auth.uid;
+    }
     function validVehicle(data) {
       return data.keys().hasAll(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['plateNumber', 'name', 'active', 'createdAt', 'updatedAt'])
@@ -159,13 +171,24 @@ service cloud.firestore {
         && (isSuperAdmin() || (resource.data.ownerUid == request.auth.uid
           && currentUser().data.companyId == companyId
           && currentUser().data.role == 'company_admin'))
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
-        && validName(request.resource.data.name);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'profile', 'settings'])
+        && validName(request.resource.data.name)
+        && (!('profile' in request.resource.data) || (request.resource.data.profile is map && request.resource.data.profile.size() <= 20))
+        && (!('settings' in request.resource.data) || validSettings(request.resource.data.settings));
     }
     // Membership records are written only by Cloud Functions (joinCompany, approveMember ...).
     // A user may read their own record (to see "pending"); managers read the whole list.
     match /companies/{companyId}/members/{memberUid} {
       allow read: if signedIn() && (request.auth.uid == memberUid || isManager(companyId));
+      // The member confirms they read the data-protection notice (date is recorded).
+      allow update: if signedIn() && request.auth.uid == memberUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['privacyAckAtMillis'])
+        && request.resource.data.privacyAckAtMillis is int;
+    }
+    // Invoices are immutable once issued (corrections = a new credit invoice).
+    match /companies/{companyId}/invoices/{invoiceId} {
+      allow read: if isManager(companyId);
+      allow create: if isCompanyAdmin(companyId) && validInvoice(request.resource.data);
     }
     // Vehicles: every active member can read (to pick one), only admins edit. No deletes – set active=false.
     match /companies/{companyId}/vehicles/{vehicleId} {

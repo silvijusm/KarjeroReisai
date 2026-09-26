@@ -1,7 +1,9 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { createMembersService } from './members.js';
+import { createRetentionService } from './retention.js';
 
 // Company membership: codes, join requests, approval, roles.
 // Separate codebase from billing so it deploys without Stripe secrets.
@@ -28,3 +30,9 @@ export const objectJoinCode = callable('objectJoinCode');
 export const joinObject = callable('joinObject');
 export const approveCarrier = callable('approveCarrier');
 export const removeCarrier = callable('removeCarrier');
+
+// Every night: delete precise GPS points older than the company retention period.
+export const purgeOldLocations = onSchedule({ schedule: 'every day 03:30', timeZone: 'Europe/Vilnius', region: 'europe-west1', timeoutSeconds: 540 }, async () => {
+  const result = await createRetentionService({ db: getFirestore() }).purgeAll();
+  console.log('Retention done', result);
+});
